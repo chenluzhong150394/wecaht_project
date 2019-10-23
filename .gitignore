@@ -1,0 +1,24 @@
+# Created by .ignore support plugin (hsz.mobi)
+/OA/settings.py
+/utils/alipay_public_key.txt
+/utils/app_private_key.txt
+.idea
+/utils/transfer.py
+/backup/
+OA/__pycache__/
+__pycache__/
+backup/
+middleware/__pycache__/
+utils/__pycache__/
+website/__pycache__/
+website/migrations/__pycache__/
+website/utils/__pycache__/
+/database_update.py
+/dist/static/js/apiConfig.js
+/test.py
+/utils/payment_interface.py
+/utils/top/
+/utils/order_info.py
+/text
+/utils/sqlite3_2_mysql.py
+utils/数据库.db
