@@ -22,6 +22,7 @@ from utils.read_excel import read_excel
 from utils.payment_interface import Payment as Pay
 from utils.pay_record import Write_Payment_record
 from utils.update_pay_key import write_pay_key
+from utils.read_pay_key import read_pay_key
 
 def init(request):
     return render(request, '../dist/../templates/index.html')
@@ -46,6 +47,18 @@ def update_pay_ses(request):
         return HttpResponse('支付宝商户信息保存成功')
     else:
         return HttpResponse(res)
+
+
+def Read_pay_key(request):
+    # 获取支付宝接口信息
+    if request.method == "GET":
+        res = read_pay_key()
+
+        return JsonResponse(res)
+    else:
+        return HttpResponse('请求失败')
+
+
 
 """
 更新账户备注信息
