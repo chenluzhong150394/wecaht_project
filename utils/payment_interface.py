@@ -11,7 +11,7 @@ current_path = os.path.dirname(__file__)
 
 
 class Payment(object):
-    def __init__(self, appid, url="https://openapi.alipay.com/gateway.do"):
+    def __init__(self, url="https://openapi.alipay.com/gateway.do"):
         '''
         支付接口初始化
         :param appid: 商户appid
@@ -19,9 +19,9 @@ class Payment(object):
         '''
         self.app_private_key_string = open(current_path + "/app_private_key.txt").read()  # 应用私钥（默认从两个TXT文件中读取）
         self.alipay_public_key_string = open(current_path + "/alipay_public_key.txt").read()  # 支付宝公钥
-        self.appid = open(current_path + "/appid.txt").read() #支付宝应用id
+        self.appid = open(current_path + "/appid.txt").read()  # 支付宝应用id
         self.alipay_each = AliPay(
-            appid=appid,
+            appid=self.appid,
             app_notify_url=url,
             app_private_key_string=self.app_private_key_string,
             alipay_public_key_string=self.alipay_public_key_string,
