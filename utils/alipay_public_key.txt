@@ -1,7 +1,3 @@
 -----BEGIN PUBLIC KEY-----
-<<<<<<< HEAD
-508040958
-=======
-admin
->>>>>>> a41109ad461986c0c4b8b82dfef0db79930480f4
+sadasdasd
 -----END PUBLIC KEY-----

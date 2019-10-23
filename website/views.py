@@ -53,7 +53,6 @@ def Read_pay_key(request):
     # 获取支付宝接口信息
     if request.method == "GET":
         res = read_pay_key()
-
         return JsonResponse(res)
     else:
         return HttpResponse('请求失败')

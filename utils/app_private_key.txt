@@ -1,7 +1,3 @@
 -----BEGIN PUBLIC KEY-----
-<<<<<<< HEAD
-123456789
-=======
-asdasd
->>>>>>> a41109ad461986c0c4b8b82dfef0db79930480f4
+asdasdasdas
 -----END PUBLIC KEY-----
