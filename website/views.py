@@ -213,7 +213,8 @@ class payment(APIView):
         file_list = os.listdir(file_dir)
         file_list.sort(key=lambda fn: os.path.getmtime(file_dir + fn) if not os.path.isdir(file_dir + fn) else 0)
         file = read_excel(file_dir + file_list[-1])  # 读取Excel表
-        pay = Pay(2018110661992863)
+        # pay = Pay(2018110661992863)
+        pay = Pay()
         data = []
         # 记录一次转账的总钱数
         record_for_payment = 0.0

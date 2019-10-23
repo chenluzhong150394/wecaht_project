@@ -30,6 +30,8 @@ urlpatterns = [
     url(r'^holder/deldevice$', views.Del_device),  # 删除设备
     url(r'^holder/add_cost$', views.add_cost),  # 增加/修改# 成本
 
+
+
     # 设置支付宝api接口配置信息
     url(r'update_setings$', views.update_pay_ses),  # 添加支付宝配置信息
     url(r'read_setings$',views.Read_pay_key),   # 查看支付宝配置信息
