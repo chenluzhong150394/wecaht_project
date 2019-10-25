@@ -228,7 +228,7 @@ class payment(APIView):
         yesterday_date = (datetime.datetime.today() + datetime.timedelta(-1)).strftime("%Y-%m-%d")
         payment_record = models.WebsitePayment.objects.filter(
             Q(pay_date__startswith=now_date) | Q(pay_date__startswith=yesterday_date)
-            ).values('amount', 'payee_account', 'payee_real_name', 'remark').all()
+        ).values('amount', 'payee_account', 'payee_real_name', 'remark').all()
         record_list = []
         for temp_record in payment_record:
             record_list.append(tuple(temp_record.values()))
@@ -841,25 +841,54 @@ def get_tran_record3(request):
     print(type(res))
     return JsonResponse(res)
 
+
+# 主页获取金额信息
 def get_tran_monery(request):
-    '''
-    :param request:
-    :return: 总提现金额
-    '''
-    res = {'code': 0, 'message': '', 'data': []}
+    res = {'code': 0, 'message': '', 'data': {}}
     try:
-        a = serializers.serialize('json', models.WebsiteTranRecord.objects.filter(status=1).annotate(Sum('money')).all())
-        b = serializers.serialize('json', models.WebsiteTranRecord.objects.filter(status=3).annotate(Sum('money')).all())
+        a = serializers.serialize('json', models.WebsiteTranRecord.objects.filter(status=1).all())
+        b = serializers.serialize('json', models.WebsiteTranRecord.objects.filter(status=3).all())
+        c = serializers.serialize('json', models.WebsiteTranRecord.objects.filter(status=0).all())
         print(a)
         a = json.loads(a)
         b = json.loads(b)
+        c = json.loads(c)
+        print(c)
         total = 0
+        count = 0
         for i in a:
-            total+=i['fields']['money']
+            total += i['fields']['money']
+            count += 1
         for i in b:
-            total+=i['fields']['money']
+            total += i['fields']['money']
+            count += 1
         print(total)
-        res['data']=total
+        res['data']["success_m"] = round(total, 2)
+        res['data']["success"] = count
+        total1 = 0
+        count1 = 0
+        for i in c:
+            total1 += i['fields']['money']
+            count1 += 1
+        print(total1)
+        res['data']['wait_m'] = round(total1, 2)
+        res['data']['wait'] = count1
+    except Exception as e:
+        res['code'] = 1
+        res['message'] = e.__repr__()
+    print(res)
+    return JsonResponse(res)
+
+# 检测设备信息
+
+def get_device_information(request):
+    res = {'code': 0, 'message': '', 'data': []}
+    try:
+        a = serializers.serialize('json', models.Device_Information.objects.all())
+        a = json.loads(a)
+        for i in a:
+            print(i)
+            res['data'].append(i)
     except Exception as e:
         res['code'] = 1
         res['message'] = e.__repr__()

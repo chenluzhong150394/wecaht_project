@@ -617,12 +617,23 @@ class WebsiteTranRecord(models.Model):
         managed = False
         db_table = 'website_tran_record'
 
-#
-# class Order_Ratio(models.Model):
-#     username = models.CharField(max_length=255)
-#     record = models.CharField(max_length=255)
-#     time = models.DateTimeField(default=timezone.now)
-#
-#     class Meta:
-#         managed = False
-#         db_table = 'website_log'
+# 设备信息表
+class Device_Information(models.Model):
+    # 服务器
+    server = models.CharField(max_length=32, blank=True, null=True)
+    # 设备号
+    device = models.CharField(max_length=32, blank=True, null=True)
+    # 软件账号
+    software_account = models.CharField(max_length=32, blank=True, null=True)
+    # 微信账号
+    wechat_id = models.CharField(max_length=32, blank=True, null=True)
+    # 软件运行情况
+    software_status = models.IntegerField(null=True, default=0)
+    # 微信在线情况
+    wechat_status = models.IntegerField(null=True, default=0)
+    # 检测时间
+    test_time = models.CharField(max_length=30, blank=True, null=True)
+    # 备注信息
+    remarks_information = models.CharField(max_length=32, blank=True, null=True)
+    class Meta:
+        db_table = 'device_information'
