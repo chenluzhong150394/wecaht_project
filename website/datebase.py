@@ -9,6 +9,7 @@ from utils.time_tools import time_list, day
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import re
+import json
 import hashlib
 import time
 import datetime
@@ -16,6 +17,9 @@ from django.db.models import Q
 from django.db.models import Count
 from django.forms.models import model_to_dict
 import traceback
+from django.core import serializers
+
+
 def create_token(username):
     """
     生成token，用户登录成功后返回token，下次访问需要携带token验证用户信息
@@ -28,8 +32,6 @@ def create_token(username):
     return m.hexdigest()
 
 
-
-
 def get_device_info():
     """
     获取所有账户设备信息
@@ -40,11 +42,11 @@ def get_device_info():
         online_status_data = {}
         session_update_time_data = {}
         data = models.WebsiteDevice.objects.all().order_by('sequence')
-        temp_data = models.OnlineStatua.objects.values_list('user_id' , 'statua').all()
+        temp_data = models.OnlineStatua.objects.values_list('user_id', 'statua').all()
         for item in temp_data:
             online_status_data[item[0]] = item[1]
 
-        temp_data = models.websiteDeviceSession.objects.values_list('device_name' , 'datetime').all()
+        temp_data = models.websiteDeviceSession.objects.values_list('device_name', 'datetime').all()
         for item in temp_data:
             session_update_time_data[item[0]] = item[1]
         for i in data:
@@ -58,7 +60,9 @@ def get_device_info():
             try:
                 if i.account in session_update_time_data:
                     # temp =
-                    session_update_time = (datetime.datetime.strptime(session_update_time_data[i.account] , '%Y-%m-%d %H:%M:%S')+datetime.timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+                    session_update_time = (datetime.datetime.strptime(session_update_time_data[i.account],
+                                                                      '%Y-%m-%d %H:%M:%S') + datetime.timedelta(
+                        days=30)).strftime('%Y-%m-%d %H:%M:%S')
                 else:
                     session_update_time = ''
             except:
@@ -67,7 +71,7 @@ def get_device_info():
                 sh_id = models.WebsiteShareholderinfo.objects.filter(own_devices=i.id).values('sh_id').first()
                 if sh_id:
                     sh_id = sh_id['sh_id']
-                    belong_to_whom = models.WebsiteUserinfo.objects.filter(id = sh_id).values('name').first()['name']
+                    belong_to_whom = models.WebsiteUserinfo.objects.filter(id=sh_id).values('name').first()['name']
             else:
                 belong_to_whom = '公司'
             if i.is_promoting == 1:
@@ -76,10 +80,12 @@ def get_device_info():
                 is_promoting = '完成推广'
             else:
                 is_promoting = '未推广'
-            res['data'].append({'id':i.id , 'device': i.device, 'account': i.account, 'status': online_status,
+            res['data'].append({'id': i.id, 'device': i.device, 'account': i.account, 'status': online_status,
                                 'sesstion_update_time': session_update_time, 'sequence': i.sequence,
                                 'wechat_id': i.wechat_id, 'qq_id': i.qq_id, 'phone_number': i.phone_number,
-                                'online_number': i.online_number, 'remark': i.remark , 'belong_to_whom':belong_to_whom , 'is_promoting':is_promoting,'is_distributed':i.is_distributed,'pid_list':i.pid_list})
+                                'online_number': i.online_number, 'remark': i.remark, 'belong_to_whom': belong_to_whom,
+                                'is_promoting': is_promoting, 'is_distributed': i.is_distributed,
+                                'pid_list': i.pid_list})
     except Exception as e:
         res['code'] = 1
         res['message'] = e.__repr__()
@@ -100,17 +106,17 @@ def update_device_info(info):
                     info['is_promoting'] = 0
                 else:
                     info['is_promoting'] = 1
-                models.WebsiteDevice.objects.filter(device=info['device']).update(device=info['device'] ,
-                                                                                 account = info['account'] ,
-                                                                                 wechat_id = info['wechat_id'],
-                                                                                 qq_id = info['qq_id'],
-                                                                                 sequence = info['sequence'],
-                                                                                 phone_number = info['phone_number'],
-                                                                                 online_number = info['online_number'],
-                                                                                 remark = info['remark'],
-                                                                                 is_promoting = info['is_promoting'],
-                                                                                 pid_list = info['pid_list'],
-                                                                                 )
+                models.WebsiteDevice.objects.filter(device=info['device']).update(device=info['device'],
+                                                                                  account=info['account'],
+                                                                                  wechat_id=info['wechat_id'],
+                                                                                  qq_id=info['qq_id'],
+                                                                                  sequence=info['sequence'],
+                                                                                  phone_number=info['phone_number'],
+                                                                                  online_number=info['online_number'],
+                                                                                  remark=info['remark'],
+                                                                                  is_promoting=info['is_promoting'],
+                                                                                  pid_list=info['pid_list'],
+                                                                                  )
             else:
                 if info['is_promoting'] == '完成推广':
                     info['is_promoting'] = 0
@@ -123,8 +129,9 @@ def update_device_info(info):
         res['message'] = e.__repr__()
     return res
 
+
 def add_device():
-    res = {'code' : 1}
+    res = {'code': 1}
     return res
 
 
@@ -170,8 +177,6 @@ def login(username, password):
         return res
 
 
-
-
 def get_record(start_time, end_time, method='payment_all'):
     """
     获取转账记录
@@ -183,7 +188,7 @@ def get_record(start_time, end_time, method='payment_all'):
                 'data':[{'amount':  ,'account':  ,'name':  ,'remark':  , 'out_biz_no':  ,'status':  }, {   },  {   } ]}
     """
     res = {'code': 0, 'message': "", 'data': []}
-    first_pay_status_dict = {'first_succ':1,'no_first_succ':0,}
+    first_pay_status_dict = {'first_succ': 1, 'no_first_succ': 0, }
     try:
         # 没有传递参数默认显示当天数据
         if not start_time or not end_time:
@@ -201,16 +206,18 @@ def get_record(start_time, end_time, method='payment_all'):
         # 查询转账失败记录(已补交和未补缴)的记录
         elif method == 'payment_fail':
             info = models.WebsitePayment.objects.filter(out_biz_no__gte=start_time).filter(
-                out_biz_no__lte=end_time, first_pay_status = first_pay_status_dict['no_first_succ']).all()
+                out_biz_no__lte=end_time, first_pay_status=first_pay_status_dict['no_first_succ']).all()
         # 待补交(未补缴)
         else:
             info = models.WebsitePayment.objects.filter(out_biz_no__gte=start_time).filter(
-                out_biz_no__lte=end_time, first_pay_status = first_pay_status_dict['no_first_succ']).exclude(status='转账成功').all()
+                out_biz_no__lte=end_time, first_pay_status=first_pay_status_dict['no_first_succ']).exclude(
+                status='转账成功').all()
 
         for i in info:
             res['data'].append(
                 {'amount': i.amount, 'account': i.payee_account, 'name': i.payee_real_name, 'remark': i.remark,
-                 'out_biz_no': i.out_biz_no, 'status': i.status , 'first_pay_status':i.first_pay_status , 'pay_date':i.pay_date})
+                 'out_biz_no': i.out_biz_no, 'status': i.status, 'first_pay_status': i.first_pay_status,
+                 'pay_date': i.pay_date})
 
     except Exception as e:
         res['code'] = 1
@@ -412,16 +419,16 @@ class API(object):
             print(e)
             return False
 
-    def add_user(self, name, password, auth , real_name , group , sex='male',gid = '1' ):
+    def add_user(self, name, password, auth, real_name, group, sex='male', gid='1'):
         # 增加新用户
 
-        role_dict = {"客服": "1", "管理员": "2" , '股东':'4' , '合伙人' : '5', '主管' : '6'}
+        role_dict = {"客服": "1", "管理员": "2", '股东': '4', '合伙人': '5', '主管': '6'}
         try:
             if models.WebsiteUserinfo.objects.filter(username=name):
                 return False
             else:
                 models.WebsiteUserinfo.objects.create(username=name, password=password, sex=sex, gid_id=gid,
-                                                      role=role_dict[group] , name = real_name ).userauth.set(auth)
+                                                      role=role_dict[group], name=real_name).userauth.set(auth)
                 if group == '股东' or group == '合伙人':
                     new_id = models.WebsiteUserinfo.objects.order_by('-id').first().id
                     models.WebsiteShareholderinfo.objects.create(sh_id_id=new_id)
@@ -440,7 +447,7 @@ class API(object):
         except Exception as e:
             return False
 
-    def update_user(self, id, name, password, auth, real_name , group, role=None):
+    def update_user(self, id, name, password, auth, real_name, group, role=None):
         """
         更新用户信息
         :param id:用户id
@@ -451,11 +458,11 @@ class API(object):
         :param role: 用户类型
         :return: true/false
         """
-        role_dict = {"客服": "1", "管理员": "2" , '股东':'4' , '合伙人' : '5', '主管' : '6'}
+        role_dict = {"客服": "1", "管理员": "2", '股东': '4', '合伙人': '5', '主管': '6'}
         try:
             data = models.WebsiteUserinfo.objects.filter(id=id)
             if data:
-                data.update(password=password , name = real_name , role = role_dict[group])
+                data.update(password=password, name=real_name, role=role_dict[group])
                 data.first().userauth.set(auth)
                 return True
             else:
@@ -490,7 +497,7 @@ def get_all_user():
     :return:{'code': 0/1, 'message': error message, 'data':[ {'device':  'account':  }, {  }, {  }]}
     """
     res = {'code': 0, 'message': '', 'data': []}
-    role_dict = {"1": "客服", "2": "管理员", "3": "超级管理员" , '4':'股东' , '5':'合伙人',  '6':'主管' ,}
+    role_dict = {"1": "客服", "2": "管理员", "3": "超级管理员", '4': '股东', '5': '合伙人', '6': '主管', }
     try:
         data = models.WebsiteUserinfo.objects.all()
         for i in data:
@@ -500,7 +507,8 @@ def get_all_user():
                 auth[j.url] = True
             i.role = role_dict[i.role]
             res['data'].append(
-                {'id': i.id, 'username': i.username,'real_name':i.name, 'password': i.password, 'group': i.role, 'auth': auth})
+                {'id': i.id, 'username': i.username, 'real_name': i.name, 'password': i.password, 'group': i.role,
+                 'auth': auth})
     except Exception as e:
         res['code'] = 1
         res['message'] = e.__repr__()
@@ -528,28 +536,6 @@ def get_Operationlog():
     return res
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def review_device_state(request_month):
     """
         查看设备状态
@@ -563,33 +549,33 @@ def review_device_state(request_month):
         query_set = models.WebsiteDeviceState.objects.filter(date__startswith=request_month).all()
         temp_name_dict = {}
         temp_name_list = []
-        for item in list(models.WebsiteDevice.objects.values_list('device','id').order_by('sequence').all()):
-            if item[0] == '代理'  or item[0] == '朋友圈':
+        for item in list(models.WebsiteDevice.objects.values_list('device', 'id').order_by('sequence').all()):
+            if item[0] == '代理' or item[0] == '朋友圈':
                 continue
             temp_name_list.append(item[1])
-            #初始化数据
+            # 初始化数据
             temp_record = {'name': item[0],
                            'eid': item[1],
                            'data': {}
                            }
             res['data'].append(temp_record)
         for item in query_set:
-            #item[0]:name ; [1]:item ; [2]:score ; [3]:date
-            #新姓名
+            # item[0]:name ; [1]:item ; [2]:score ; [3]:date
+            # 新姓名
             index_date = str(int(item.date[-2:]))
             if item.device_rawid_id not in temp_name_list:
                 temp_name_list.append(item.device_rawid_id)
                 # temp_name_dict[item.device_rawid_id] = item.device_rawid.device
                 temp_record = {'name': item.device_rawid.device,
                                'eid': item.device_rawid_id,
-                               'data': {'state_id' + index_date: item.id , 'i' + index_date: item.device_state}
+                               'data': {'state_id' + index_date: item.id, 'i' + index_date: item.device_state}
                                }
                 res['data'].append(temp_record)
 
-            #已经在记录中
+            # 已经在记录中
             else:
                 index_record = temp_name_list.index(item.device_rawid_id)
-                res['data'][index_record]['data']['state_id'+ index_date] = item.id
+                res['data'][index_record]['data']['state_id' + index_date] = item.id
                 res['data'][index_record]['data']['i' + index_date] = item.device_state
     except Exception as e:
         res['code'] = 1
@@ -613,18 +599,35 @@ def update_device_state(edit_info):
     try:
         with transaction.atomic():  # 出错回滚
             if edit_info:  # 修改
-                #判断修改还是新增
+                # 判断修改还是新增
                 if 'remark' not in edit_info.keys():
-                    edit_info['remark']= ''
-                if models.WebsiteDeviceState.objects.filter(device_rawid=edit_info['eid'] , date=edit_info['date']):
-                    models.WebsiteDeviceState.objects.filter(device_rawid=edit_info['eid'] , date=edit_info['date']).update(device_state = edit_info['state'] ,
-                                                                                                           remark = edit_info['remark'])
+                    edit_info['remark'] = ''
+                if models.WebsiteDeviceState.objects.filter(device_rawid=edit_info['eid'], date=edit_info['date']):
+                    models.WebsiteDeviceState.objects.filter(device_rawid=edit_info['eid'],
+                                                             date=edit_info['date']).update(
+                        device_state=edit_info['state'],
+                        remark=edit_info['remark'])
                     res['message'] = str(edit_info['eid']) + '的状态修改成功'
                 else:
-                    models.WebsiteDeviceState.objects.create(device_rawid_id = edit_info['eid'] , date=edit_info['date'], device_state=edit_info['state'],remark = edit_info['remark'])
+                    models.WebsiteDeviceState.objects.create(device_rawid_id=edit_info['eid'], date=edit_info['date'],
+                                                             device_state=edit_info['state'],
+                                                             remark=edit_info['remark'])
                     res['message'] = str(edit_info['eid']) + '的状态创建成功'
     except Exception as e:
         res['code'] = 1
         res['message'] = e.__repr__()
     return res
 
+
+# def get_tran_record():
+#     res = {'code': 0, 'message': '', 'data': []}
+#     try:
+#         a = models.WebsiteTranRecord.objects.filter(status=0).all()
+#         b = serializers.serialize('json', a)
+#         res['data'] = json.loads(b)
+#     except Exception as e:
+#         res['code'] = 1
+#         res['message'] = e.__repr__()
+#     print(res)
+#     print(type(res))
+#     return res

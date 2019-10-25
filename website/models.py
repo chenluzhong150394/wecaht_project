@@ -591,6 +591,32 @@ class WebsiteDeviceState(models.Model):
         managed = False
         db_table = 'website_device_state'
 
+"""
+新增功能
+"""
+# 转账 账单信息
+class WebsiteTranRecord(models.Model):
+    # 金额
+    money = models.FloatField(blank=True, null=True)
+    # 姓名
+    name = models.CharField(max_length=30, blank=True, null=True)
+    # 账号
+    zfb_number = models.CharField(max_length=30, blank=True, null=True)
+    # 设备号
+    device = models.CharField(max_length=64, blank=True, null=True)
+    # 转账时间
+    tran_time = models.CharField(max_length=30, blank=True, null=True)
+    # 交易号
+    tran_number = models.CharField(max_length=60, blank=True, null=True)
+    # 状态
+    status = models.IntegerField(null=True, default=0)
+    # 操作人
+    operator = models.CharField(max_length=30, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'website_tran_record'
+
 #
 # class Order_Ratio(models.Model):
 #     username = models.CharField(max_length=255)

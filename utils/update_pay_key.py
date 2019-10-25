@@ -12,6 +12,7 @@ def write_pay_key(public,private,appid):
         public = public.strip()
         private = private.strip()
         appid = appid.strip()
+        # 判断APPID的格式是否是纯数字
         if appid.isdigit():
             pus = '-----BEGIN PUBLIC KEY-----'+'\n' + public + '\n' +'-----END PUBLIC KEY-----'
             prs = '-----BEGIN PUBLIC KEY-----'+'\n' + private + '\n' + '-----END PUBLIC KEY-----'
