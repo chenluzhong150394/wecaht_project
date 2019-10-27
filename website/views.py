@@ -785,7 +785,7 @@ def preview_cost(request):
 #             res = {'code': 1, 'message': '传入数据有误！', 'data': {}}
 #         return JsonResponse(res)
 
-
+# 获取转账信息
 def get_tran_record(request):
     res = {'code': 0, 'message': '', 'data': []}
     try:
@@ -841,17 +841,18 @@ def get_tran_record3(request):
     print(type(res))
     return JsonResponse(res)
 
+from django.db.models import Q
 
 # 主页获取金额信息
 def get_tran_monery(request):
     res = {'code': 0, 'message': '', 'data': {}}
     try:
-        a = serializers.serialize('json', models.WebsiteTranRecord.objects.filter(status=1).all())
-        b = serializers.serialize('json', models.WebsiteTranRecord.objects.filter(status=3).all())
+        a = serializers.serialize('json', models.WebsiteTranRecord.objects.filter(Q(status=1)|Q(status=3)).all())
+        # b = serializers.serialize('json', models.WebsiteTranRecord.objects.filter(status=3).all())
         c = serializers.serialize('json', models.WebsiteTranRecord.objects.filter(status=0).all())
         print(a)
         a = json.loads(a)
-        b = json.loads(b)
+        # b = json.loads(b)
         c = json.loads(c)
         print(c)
         total = 0
@@ -859,9 +860,9 @@ def get_tran_monery(request):
         for i in a:
             total += i['fields']['money']
             count += 1
-        for i in b:
-            total += i['fields']['money']
-            count += 1
+        # for i in b:
+        #     total += i['fields']['money']
+        #     count += 1
         print(total)
         res['data']["success_m"] = round(total, 2)
         res['data']["success"] = count
@@ -894,3 +895,11 @@ def get_device_information(request):
         res['message'] = e.__repr__()
     print(res)
     return JsonResponse(res)
+
+# 写入检测信息
+def write_device_information(request):
+    if request.META.get('HTTP_X_FORWARDED_FOR'):
+        ip = request.META.get("HTTP_X_FORWARDED_FOR")
+    else:
+        ip = request.META.get("REMOTE_ADDR")
+    models.Device_Information.objects.filter(server=ip).update(software_account=request.GET.get("software_account"))

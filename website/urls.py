@@ -66,4 +66,6 @@ urlpatterns = [
     # 获取设备状态
     url(r'^devicestatus$', views.get_device_information),  # 设备状态获取
 
+    # 写入数据库设备状态
+    url(r'^writedevicestatus$', views.write_device_information),  # 写入数据库设备状态
 ]
