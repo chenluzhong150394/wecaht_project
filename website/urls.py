@@ -55,13 +55,10 @@ urlpatterns = [
     #操作日志
     url(r'^operationlog$', views.Operationlog.as_view()),   # 查看操作日志
 
-    # 获取转账信息
-    url(r'^tranrecord$', views.get_tran_record),  # 获取未转账信息
-    url(r'^tranrecord1$', views.get_tran_record1),  # 获取转账成功信息
-    url(r'^tranrecord2$', views.get_tran_record2),  # 获取转账失败信息
-    url(r'^tranrecord3$', views.get_tran_record3),  # 获取失败以后再次转账成功信息
-
-    url(r'^tranmonery$', views.get_tran_monery),  # 获取转账笔数金额等相关信息
+    # 转账信息
+    url(r'^tranrecord$', views.Get_tran_record.as_view()),  # 获取转账信息
+    url(r'^tranrecord1$', views.Get_tran_record1.as_view()),  # 获取今日转账
+    url(r'^tranmonery$', views.Get_tran_monery.as_view()),  # 获取转账笔数金额
 
     # 获取设备状态
     url(r'^devicestatus$', views.get_device_information),  # 设备状态获取

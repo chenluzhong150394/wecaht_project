@@ -158,6 +158,7 @@ def login(username, password):
                 for i in userinfo.userauth.all():
                     auth[i.url] = True
                 res['data']['auth'] = auth
+                print(auth)
                 # #权限
                 # res['data']['realtimeData'] = True
                 # res['data']['adilyData'] = True
@@ -619,15 +620,107 @@ def update_device_state(edit_info):
     return res
 
 
-# def get_tran_record():
-#     res = {'code': 0, 'message': '', 'data': []}
-#     try:
-#         a = models.WebsiteTranRecord.objects.filter(status=0).all()
-#         b = serializers.serialize('json', a)
-#         res['data'] = json.loads(b)
-#     except Exception as e:
-#         res['code'] = 1
-#         res['message'] = e.__repr__()
-#     print(res)
-#     print(type(res))
-#     return res
+# 获取主页金额相关信息
+def get_tran_monery(request):
+    res = {'code': 0, 'message': '', 'data': {}}
+    try:
+        a = serializers.serialize('json', models.WebsiteTranRecord.objects.filter(Q(status=1) | Q(status=3)).all())
+        c = serializers.serialize('json', models.WebsiteTranRecord.objects.filter(status=0).all())
+        print(a)
+        a = json.loads(a)
+        c = json.loads(c)
+        total = 0
+        count = 0
+        for i in a:
+            total += i['fields']['money']
+            count += 1
+        res['data']["success_m"] = round(total, 2)
+        res['data']["success"] = count
+        total1 = 0
+        count1 = 0
+        for i in c:
+            total1 += i['fields']['money']
+            count1 += 1
+        res['data']['wait_m'] = round(total1, 2)
+        res['data']['wait'] = count1
+    except Exception as e:
+        res['code'] = 1
+        res['message'] = e.__repr__()
+    return (res)
+
+
+def get_tran_record(method='payment_all'):
+    """
+    获取转账记录
+    :param start_time: 开始时间
+    :param end_time:  结束时间
+    :param method: 记录类型（默认全部）
+
+    :return: {'code':0/1, 'message': error message ,\
+                'data':[{'amount':  ,'account':  ,'name':  ,'remark':  , 'out_biz_no':  ,'status':  }, {   },  {   } ]}
+    """
+    res = {'code': 0, 'message': "", 'data': []}
+    try:
+        # 查询所有的转账记录
+        if method == 'payment_all':
+            info = models.WebsiteTranRecord.objects.exclude(status=0).all()
+        # 查询转账失败记录(已补交和未补缴)的记录
+        elif method == 'payment_fail':
+            info = models.WebsiteTranRecord.objects.filter(Q(status=2) | Q(status=3)).all()
+        # 查询转账失败记录(已补交和未补缴)的记录
+        elif method == 'payment_fail1':
+            info = models.WebsiteTranRecord.objects.filter(Q(status=2) | Q(status=3)).all()
+        # 待补交(未补缴)
+        else:
+            info = models.WebsiteTranRecord.objects.filter(status=2).all()
+
+        for i in info:
+            res['data'].append(
+                {'monery': i.money, 'name': i.name, 'zfb': i.zfb_number,
+                 'device': i.device, 'status': i.status, 'tran_time': i.tran_time,
+                 'tran_number': i.tran_number, 'operator': i.operator})
+
+    except Exception as e:
+        res['code'] = 1
+        res['message'] = e.__repr__()
+
+    return res
+
+
+def get_tran_record1(request):
+    """
+    获取今日提现相关信息
+    :return:
+    """
+    res = {'code': 0, 'message': "", 'data': [], "data1": []}
+    # 总设备列表
+    count = []
+    # 提现设备列表
+    count1 = []
+    # 提现金额
+    monery = 0
+    try:
+        info = models.Device_Information.objects.all()
+        for i in info:
+            count.append(i.device)
+        print(len(count))
+        info = models.WebsiteTranRecord.objects.filter(status=0).all()
+        for i in info:
+            monery += i.money
+            count1.append(i.device)
+        a = (len(count1))
+        count1 = set(count1)
+        len(count1)
+        monery = round(monery, 2)
+        res["data"].append(
+            {"device_count": len(count), "cash_device_count": len(count1), "cash_count": a, "cash_monery": monery})
+        for i in info:
+            res['data1'].append(
+                {'monery': i.money, 'name': i.name, 'zfb': i.zfb_number,
+                 'device': i.device, 'status': i.status, 'tran_time': i.tran_time,
+                 'tran_number': i.tran_number, 'operator': i.operator})
+    except Exception as e:
+        res['code'] = 1
+        res['message'] = e.__repr__()
+
+    return res

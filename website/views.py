@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 import json
 import threading
 import datetime
+from django.db.models import Q
 # websocket
 from dwebsocket.decorators import accept_websocket
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger, InvalidPage
@@ -22,6 +23,7 @@ from utils.payment_interface import Payment as Pay
 from utils.pay_record import Write_Payment_record
 from utils.update_pay_key import write_pay_key
 from utils.read_pay_key import read_pay_key
+from website.models import Device_Information
 
 
 def init(request):
@@ -774,132 +776,93 @@ def preview_cost(request):
     return JsonResponse(res)
 
 
-# class Get_tran_record(APIView):
-#     """
-#     获取未转账数据
-#     """
-#     def post(self, request):
-#         if request.method == 'post':
-#             res = get_tran_record()
-#         else:
-#             res = {'code': 1, 'message': '传入数据有误！', 'data': {}}
-#         return JsonResponse(res)
-
-# 获取转账信息
-def get_tran_record(request):
-    res = {'code': 0, 'message': '', 'data': []}
-    try:
-        a = models.WebsiteTranRecord.objects.filter(status=0).all()
-        b = serializers.serialize('json', a)
-        res['data'] = json.loads(b)
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = e.__repr__()
-    print(res)
-    print(type(res))
-    return JsonResponse(res)
-
-
-def get_tran_record1(request):
-    res = {'code': 0, 'message': '', 'data': []}
-    try:
-        a = models.WebsiteTranRecord.objects.filter(status=1).all()
-        b = serializers.serialize('json', a)
-        res['data'] = json.loads(b)
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = e.__repr__()
-    print(res)
-    print(type(res))
-    return JsonResponse(res)
-
-
-def get_tran_record2(request):
-    res = {'code': 0, 'message': '', 'data': []}
-    try:
-        a = models.WebsiteTranRecord.objects.filter(status=2).all()
-        b = serializers.serialize('json', a)
-        res['data'] = json.loads(b)
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = e.__repr__()
-    print(res)
-    print(type(res))
-    return JsonResponse(res)
-
-
-def get_tran_record3(request):
-    res = {'code': 0, 'message': '', 'data': []}
-    try:
-        a = models.WebsiteTranRecord.objects.filter(status=3).all()
-        b = serializers.serialize('json', a)
-        res['data'] = json.loads(b)
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = e.__repr__()
-    print(res)
-    print(type(res))
-    return JsonResponse(res)
-
-from django.db.models import Q
-
 # 主页获取金额信息
-def get_tran_monery(request):
-    res = {'code': 0, 'message': '', 'data': {}}
-    try:
-        a = serializers.serialize('json', models.WebsiteTranRecord.objects.filter(Q(status=1)|Q(status=3)).all())
-        # b = serializers.serialize('json', models.WebsiteTranRecord.objects.filter(status=3).all())
-        c = serializers.serialize('json', models.WebsiteTranRecord.objects.filter(status=0).all())
-        print(a)
-        a = json.loads(a)
-        # b = json.loads(b)
-        c = json.loads(c)
-        print(c)
-        total = 0
-        count = 0
-        for i in a:
-            total += i['fields']['money']
-            count += 1
-        # for i in b:
-        #     total += i['fields']['money']
-        #     count += 1
-        print(total)
-        res['data']["success_m"] = round(total, 2)
-        res['data']["success"] = count
-        total1 = 0
-        count1 = 0
-        for i in c:
-            total1 += i['fields']['money']
-            count1 += 1
-        print(total1)
-        res['data']['wait_m'] = round(total1, 2)
-        res['data']['wait'] = count1
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = e.__repr__()
-    print(res)
-    return JsonResponse(res)
+class Get_tran_monery(APIView):
+    def post(self, request):
+        try:
+            res = get_tran_monery(request)
+        except Exception as e:
+            res = {'code': 1, 'message': e.__repr__(), 'data': []}
+        return JsonResponse(res)
+
 
 # 检测设备信息
-
 def get_device_information(request):
-    res = {'code': 0, 'message': '', 'data': []}
+    """
+    :param request:
+    :return: {'code': 0, 'message': '', 设备总数量/'count': 0, 正常运行设备数量/'count1': 0, 异常设备数量/'count2': 0, 'data': [设备相关信息]}
+    """
+    res = {'code': 0, 'message': '', 'count': 0, 'count1': 0, 'count2': 0, 'data': []}
     try:
         a = serializers.serialize('json', models.Device_Information.objects.all())
+        b = serializers.serialize('json', models.Device_Information.objects.filter(
+            Q(software_status=0) & Q(wechat_status=0)).all())
         a = json.loads(a)
+        b = json.loads(b)
+        count = 0
+        count1 = 0
         for i in a:
-            print(i)
+            count += 1
             res['data'].append(i)
+            res["count"] = count
+        for _ in b:
+            count1 += 1
+            res["count1"] = count1
+            res["count2"] = count - count1
     except Exception as e:
         res['code'] = 1
         res['message'] = e.__repr__()
-    print(res)
     return JsonResponse(res)
+
 
 # 写入检测信息
 def write_device_information(request):
-    if request.META.get('HTTP_X_FORWARDED_FOR'):
-        ip = request.META.get("HTTP_X_FORWARDED_FOR")
-    else:
-        ip = request.META.get("REMOTE_ADDR")
-    models.Device_Information.objects.filter(server=ip).update(software_account=request.GET.get("software_account"))
+    request = request.body.decode()
+    request = json.loads(request)
+    robot_total = request['robot_total']
+    we_total = request['we_total']
+    time = request["test_time"]
+    # 软件账号是个字典
+    software_account = request['software_account']
+    server_ip = request['serverIP']
+    print(robot_total, we_total, software_account, server_ip, time)
+    info = models.Device_Information.objects.filter(server=server_ip)
+    for i in info:
+        if i.software_account in software_account and robot_total == 2 and we_total == 2:
+            i.software_status = 0
+            i.wechat_status = 0
+            i.test_time = time
+            i.save()
+        else:
+            i.software_status = 1
+            i.wechat_status = 1
+            i.test_time = time
+            i.save()
+    return HttpResponse('写入成功')
+
+
+class Get_tran_record(APIView):
+    """
+    获取转账信息接口
+    """
+
+    def post(self, request):
+        try:
+            method = request.data.get('type', None)
+            res = get_tran_record(method)
+        except Exception as e:
+            res = {'code': 1, 'message': e.__repr__(), 'data': []}
+        return JsonResponse(res)
+
+
+class Get_tran_record1(APIView):
+    """
+    今日转账信息
+    """
+
+    def post(self, request):
+        try:
+            res = get_tran_record1(request)
+        except Exception as e:
+            res = {'code': 1, 'message': e.__repr__(), 'data': []}
+        return JsonResponse(res)

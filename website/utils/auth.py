@@ -13,14 +13,15 @@ class Authtication(BaseAuthentication):
             raise exceptions.AuthenticationFailed({'code': 1, 'message': '用户认证失败！', 'data': {}})
         # auth = {}.fromkeys([n.url for n in models.WebsiteAuth.objects.all()], False)
         # 获取用户权限
-        # print(request._request.path)
         auth = []
         for i in API().get_user_url(obj.username):
             auth.append('/oa/'+i)
             # auth[i] = True
 
         auth.append('/oa/customerstatistics')
-        # print(auth)
+        auth.append('/oa/tranrecord')
+        auth.append('/oa/tranrecord1')
+        auth.append('/oa/tranmonery')
         now_request_path = "/".join(request._request.path.split('/')[:3])
         if now_request_path not in auth:
             raise exceptions.AuthenticationFailed({'code': 1, 'message': '无权访问！', 'data': {}})

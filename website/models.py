@@ -637,3 +637,5 @@ class Device_Information(models.Model):
     remarks_information = models.CharField(max_length=32, blank=True, null=True)
     class Meta:
         db_table = 'device_information'
+
+# 余额表
