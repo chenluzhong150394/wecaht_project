@@ -6,7 +6,6 @@ from django.shortcuts import render, HttpResponse, redirect
 from django.http import FileResponse, JsonResponse
 # from django.views import View
 from website.datebase import *
-from utils.time_tools import day, month, time_list
 from utils.transfer import Haproxy
 from datetime import datetime
 from rest_framework.views import APIView
@@ -15,118 +14,28 @@ import threading
 import datetime
 from django.db.models import Q
 # websocket
+import shutil
 from dwebsocket.decorators import accept_websocket
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger, InvalidPage
 # 转账
 from utils.read_excel import read_excel
 from utils.payment_interface import Payment as Pay
-from utils.pay_record import Write_Payment_record
 from utils.update_pay_key import write_pay_key
 from utils.read_pay_key import read_pay_key
-from website.models import Device_Information
+from utils.yuancheng import Yuan
 
 
 def init(request):
     return render(request, '../dist/../templates/index.html')
 
 
-"""
-    增加一个保存支付宝信息的接口
-
-"""
-
-
-def update_pay_ses(request):
-    print(request.body.decode())
-    dic_body = request.body.decode()
-    dic_body = json.loads(dic_body)
-    # print(json.loads(request.body))
-    public = dic_body.get('pub')
-    private = dic_body.get('prv')
-    appid = dic_body.get('appid')
-    # print(public,private,appid)
-    print(type(appid), type(public), type(private))
-    res = write_pay_key(public, private, appid)
-    if res == '写入成功':
-        return HttpResponse('支付宝商户信息保存成功')
-    else:
-        return HttpResponse(res)
-
-
-def Read_pay_key(request):
-    # 获取支付宝接口信息
-    if request.method == "GET":
-        res = read_pay_key()
-        return JsonResponse(res)
-    else:
-        return HttpResponse('请求失败')
-
-
-"""
-更新账户备注信息
-"""
-
-
-def Device_edit(request):
-    # 更新设备信息
-    try:
-        request = json.loads(request.body)
-        info = {}
-        info['device'] = request.get('device', None)
-        info['account'] = request.get('account', None)
-        info['sequence'] = request.get('sequence', None)
-        info['wechat_id'] = request.get('wechat_id', None)
-        info['qq_id'] = request.get('qq_id', None)
-        info['phone_number'] = request.get('phone_number', None)
-        info['online_number'] = request.get('online_number', None)
-        info['remark'] = request.get('remark', None)
-        info['is_promoting'] = request.get('is_promoting', None)
-        info['pid_list'] = request.get('pid_list', None)
-        # req = eval(request.body.decode('utf-8'))
-        res = update_device_info(info)
-        # write_log(request.user, '修改设备信息'+req)
-    except Exception as e:
-        res = {'code': 1, 'message': e.__repr__(), 'data': {}}
-    return JsonResponse(res)
-
-
-class Device_review(APIView):
-    """
-    获取账户备注信息
-    """
-
-    def post(self, request):
-        # 获取设备信息
-        try:
-            # req = eval(request.body.decode('utf-8'))
-            res = get_device_info()
-            # write_log(request.user, '查看设备信息'+req)
-        except Exception as e:
-            res = {'code': 1, 'message': e.__repr__(), 'data': {}}
-        return JsonResponse(res)
-
-
-def Device_add(request):
-    # 更新设备信息
-    try:
-        # req = eval(request.body.decode('utf-8'))
-        res = add_device()
-        # write_log(request.user, '修改设备信息'+req)
-    except Exception as e:
-        res = {'code': 1, 'message': e.__repr__(), 'data': {}}
-    return JsonResponse(res)
-
-
 class Operationlog(APIView):
     """
-    获取账户备注信息
+    获取操作日志信息
     """
 
     def post(self, request):
-        # 获取设备信息
         try:
             res = get_Operationlog()
-            # write_log(request.user, '查看设备信息'+req)
         except Exception as e:
             res = {'code': 1, 'message': e.__repr__(), 'data': {}}
         return HttpResponse(json.dumps(res), content_type="application/json")
@@ -141,8 +50,6 @@ class Login(APIView):
     def post(self, request):
         username = request.data.get("username", None)
         password = request.data.get("password", None)
-        # username = request.data['username']
-        # password = request.data['password']
         res = login(username, password)
         write_log(username, '登陆')
         return JsonResponse(res, safe=False)
@@ -301,83 +208,60 @@ class payment(APIView):
         return JsonResponse(res)
 
 
-def balance_preview(request):
-    """
-    查看余额
-    :param request:
-    :return:｛'code': 0/1, 'message': error message,'data':{} }
-    """
-    res = {'code': 0, 'message': "", 'data': {}}
-    try:
-        balance = models.WebsiteBalanceRecord.objects.values('balance').order_by('-id').first()['balance']
-        res['data'] = balance
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = '余额查看失败!' + e.__repr__()
-    return JsonResponse(res)
-
-
-def balance_deposit(request):
-    """
-    存钱余额
-    :param request:
-    :return:｛'code': 0/1, 'message': error message,'data':{} }
-    """
-    res = {'code': 0, 'message': "", 'data': {}}
-    try:
-        deposit = float(eval(request.body).get('deposit', None))
-        balance = models.WebsiteBalanceRecord.objects.order_by("-id").values('balance').first()['balance']
-        balance_record = {'account_name': '铁牛5', 'balance': round(balance + deposit, 2),
-                          'update_time': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                          'last_time_balance': round(balance, 2), 'last_cost': -round(deposit, 2)}
-        models.WebsiteBalanceRecord.objects.create(**balance_record)
-        res['message'] = '存款成功'
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = '存款失败!' + e.__repr__()
-    return JsonResponse(res)
-
-
 # 下载Excel
-@accept_websocket
 def get_excel(request):
     """
-    调用下载器获取转账表，通过websocket显示下载进度
+    调用下载器获取需要转账的表，
     :param request:
+    :param operator 操作人
+    :param uid 用户id
     :return: {'code': 0/1, 'message': error message, 'data': download message}
     """
-    res = {'code': 0, 'message': "", 'data': ""}
-    if not request.is_websocket():  # 判断是不是websocket连接
-        res['code'] = 1
-        res['message'] = '请使用websocket连接访问'
+    user_info = json.loads(request.body.decode())
+    uid = int(user_info["uid"])
+    # 取出操作人
+    operator = models.WebsiteUserinfo.objects.filter(uid=uid).values('username').first()['username']
+    print(operator)
+    res = {'code': 0, 'message': "执行成功"}
+    try:
+        # delete old file
+        new_path = r'C:\\Users\\Administrator\\Desktop\\backup_data\\'
+        file_dir = r'C:\\Users\\Administrator\\Desktop\\record_joined_file\\joined_file.xls'
+        os.remove(file_dir)
+    except:
+        pass
+    download = Haproxy()  # 实例化下载器类
+    t = threading.Thread(target=download.run)  # 开启线程调用run函数，下载Excel表格
+    t.start()
+    file_path = r'C:\\Users\\Administrator\\Desktop\\record_joined_file\\joined_file.xls'
+    #读取转帐表，写入数据库
+    try:
+        res = read_excel(file_path)
+        # [16.32, 'isabel98@163.com', '返利到账', '崔丹', '109']
+        row = 0
+        for i in res:
+            money = i[0]
+            zfb_number = i[1]
+            device = i[-1]
+            status = 0
+            name = i[-2]
+            models.WebsiteTranRecord.objects.create(money=money, name=name, zfb_number=zfb_number, device=device, status=status, operator=operator)
+            row += 1
+        now_time = time.strftime("%Y-%m-%d__%H:%M:%S", time.localtime()) + "写入数据库" +".xls"
+        ## 引包 import shutil
+        shutil.move(file_dir, new_path + now_time)
+    except Exception as e:
+        data = e.__repr__()
+        res["code"] = 1
+        res["message"] = data
         return JsonResponse(res)
-    else:
-        try:
-            # delete old file
-            file_dir = 'C:\\Users\\Administrator\\Desktop\\record_joined_file\\joined_file.xls'
-            os.remove(file_dir)
-        except:
-            pass
-        download = Haproxy()  # 实例化下载器类
-        t = threading.Thread(target=download.run)  # 开启线程调用run函数，下载Excel表格
-        t.start()
-        sent = []
-        while download.status:
-            # 返回最新的几个下载结果
-            if len(download.status_dict) > len(sent):
-                count = 0
-                for i in download.status_dict.keys():
-                    if i not in sent:
-                        count += 1
-                        sent.append(i)
-                for index in range(0, count):
-                    request.websocket.send(str(sent[len(sent) - index - 1] + '@' + str(
-                        download.status_dict[sent[len(sent) - index - 1]])).encode('utf-8'))  # 发送消息到客户端
-        # request.websocket.send('下载完成'.encode('utf-8'))
+    res["message"] = "成功写入了%s条待体现数据" % row
+    return JsonResponse(res)
 
 
 class Manager_review(APIView):
     """
+    用户管理
     查看用户信息
     """
 
@@ -391,24 +275,27 @@ class Manager_review(APIView):
 
 class Update_person_info(APIView):
     """
-    修改某个人的信息权限
+    修改某个人的信息及权限
     """
-
     def post(self, request):
+        id = request.data.get("uid", None)
+        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
+            'username']
         try:
             raw_auth = []
             raw_id = request.data.get('id', None)
             raw_username = request.data.get('username', None)
             raw_password = request.data.get('password', None)
             real_name = request.data.get('real_name', None)
-            group = request.data.get('group', None)
+            role = request.data.get('role', None)
             for power, values in request.data.get('power', None).items():
                 if values:
                     raw_auth.append(models.WebsiteAuth.objects.filter(url=power).values('id').first()['id'])
 
-            update_result = API().update_user(raw_id, raw_username, raw_password, raw_auth, real_name, group)
+            update_result = API().update_user(raw_id, raw_username, raw_password, raw_auth, real_name, role)
             if update_result:
                 res = {'code': 0, 'message': raw_username + '的信息更新成功', 'data': []}
+                write_log(worker, "修改了"+raw_username+"的信息及权限")
             else:
                 res = {'code': 1, 'message': raw_username + '的信息更新失败', 'data': []}
         except Exception as e:
@@ -418,45 +305,55 @@ class Update_person_info(APIView):
 
 class Remove_user(APIView):
     """
-    修改某个人的信息权限
+    删除用户
     """
 
     def post(self, request):
         try:
+            id = request.data.get("uid", None)
+            worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
+                'username']
             raw_id = request.data.get('id', None)
+            user_name = models.WebsiteUserinfo.objects.filter(id=raw_id).values('username').first()[
+                'username']
             remove_result = API().remove_user(raw_id)
             if remove_result:
-                res = {'code': 0, 'message': raw_id + '的信息删除成功', 'data': []}
+                res = {'code': 0, 'message': user_name + '的信息删除成功', 'data': []}
+                write_log(worker, "删除了用户"+user_name)
             else:
-                res = {'code': 1, 'message': raw_id + '的信息删除失败', 'data': []}
+                res = {'code': 1, 'message': user_name + '的信息删除失败', 'data': []}
         except Exception as e:
             res = {'code': 1, 'message': e.__repr__(), 'data': []}
         return JsonResponse(res)
 
 
-# 修改权限
 class Manager_user_auth(APIView):
     """
-    获取转账记录
+    新增用户
     """
-
     def post(self, request):
+        id = request.data.get("uid", None)
+        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
+            'username']
         try:
             all_auth = API().get_auth_info()
             new_auth_list = []
-            new_name = request.data.get('username', None)
-            new_password = request.data.get('password', None)
-            real_name = request.data.get('real_name', None)
-            group = request.data.get('group', None)
-            power = request.data.get('power', None)
+            new_name = request.data.get('username', None)  # 新建用户用户名
+            new_password = request.data.get('password', None)  # 新建用户密码
+            real_name = request.data.get('real_name', None)  # 新建用户姓名
+            role = request.data.get('role', None)  # 用户类型
+            power = request.data.get('power', None)  # 用户权限
             for key, value in power.items():
                 if value:
+                    # 把用户全新更新到权限表中
                     new_auth_list.append(models.WebsiteAuth.objects.filter(url=key).values('id').first()['id'])
+            # 判断用户是否存在
             current_user_list = API().get_all_user_name()
             if new_name not in current_user_list:
                 # new user auth
-                API().add_user(new_name, new_password, new_auth_list, real_name, group)
+                API().add_user(new_name, new_password, new_auth_list, real_name, role)
                 res = {'code': 0, 'message': "添加成功", 'data': []}
+                write_log(worker, "添加了新用户"+new_name)
             else:
                 # change user auth
                 res = {'code': 1, 'message': "已存在此用户", 'data': []}
@@ -468,9 +365,7 @@ class Manager_user_auth(APIView):
 def change_password(request):
     """
         修改密码
-        接收: {token,uid,
-    	password :股东的密码
-        }
+        接收: {token,uid,password:新密码}
         返回 : 默认
         """
     res = {'code': 0, 'message': "", 'data': []}
@@ -479,7 +374,7 @@ def change_password(request):
     try:
         new_password = eval(request.body).get('password', None)
         models.WebsiteUserinfo.objects.filter(id=user_id).update(password=new_password)
-        write_log(worker, '修改密码')
+        write_log(worker, '修改了密码')
         res['message'] = '密码修改成功'
     except Exception as e:
         res['code'] = 1
@@ -489,72 +384,24 @@ def change_password(request):
 
 def get_userinfo(request):
     """
-        获取某用户的信息
-        接收: {token,uid,
-    	password :股东的密码
-        }
+        获取当前登录用户的信息
+        接收: {token,uid}
         返回 : 默认
         """
     res = {'code': 0, 'message': "", 'data': {}}
     user_id = eval(request.body).get('uid', None)
-    # worker = models.WebsiteUserinfo.objects.filter(id=user_id).values('username').first()['username']
     try:
-        # new_password = eval(request.body).get('password', None)
         user = models.WebsiteUserinfo.objects.filter(id=user_id).first()
-        role_dict = {"1": "客服", "2": "管理员", "3": "超级管理员", '4': '股东', '5': '合伙人'}
+        role_dict = {"1": "管理员", "2": "普通"}
         user_info = {'name': user.name,
-                     'group': role_dict[user.role],
+                     'role': role_dict[user.role],
                      'password': user.password,
                      'username': user.username,
-
                      }
-        # write_log(worker, '修改密码')
         res['data'].update(user_info)
     except Exception as e:
         res['code'] = 1
         res['message'] = e.__repr__()
-    return JsonResponse(res)
-
-
-class get_device_state(APIView):
-    """
-    设备状态
-    """
-
-    def post(self, request):
-        request_month = request.data.get('date', None)
-        if request_month:  # 修改
-            res = review_device_state(request_month)
-        else:
-            res = {'code': 1, 'message': '传入数据有误！', 'data': {}}
-        return JsonResponse(res)
-
-
-def set_device_state(request):
-    """
-    修改设备状态
-        接收: {token , uid  ,eid , state , date , remark}
-    返回: {code , message ,
-    data:[
-        {}
-    ]
-    """
-    res = {'code': 0, 'message': "", 'data': []}
-    uid = eval(request.body).get('uid', None)
-    worker = models.WebsiteUserinfo.objects.filter(id=uid).values('username').first()['username']
-    try:
-        request = eval(request.body)
-        try:
-            edit_data = request['data']
-            for item in edit_data:
-                res = update_device_state(item)
-            write_log(worker, '修改设备状态')
-        except:
-            res = {'code': 1, 'message': '传入数据有误！', 'data': {}}
-        # res['data'] = balance
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = '设备查看失败!' + e.__repr__()
     return JsonResponse(res)
 
 
@@ -588,196 +435,52 @@ def download_log(request):
     return JsonResponse(res)
 
 
-def get_accounts(request):
+def update_pay_ses(request):
     """
-    获取设备账号
-            接收: {token , uid }
-        返回: {code , message ,
-        data:[
-            {}
-        ]
+    增加一个保存支付宝信息的接口
+    :param request:
+    :return:
     """
-    res = {'code': 0, 'message': "", 'data': []}
-    try:
-        account_list = models.WebsiteDevice.objects.filter().values('account').all().distinct()
-        for account in account_list:
-            res['data'].append(account['account'])
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = '账号查看失败!' + e.__repr__()
-    return JsonResponse(res)
+    request_boby_dict = eval(request.body)
+    worker = models.WebsiteUserinfo.objects.filter(id=request_boby_dict['uid']).values('username').first()['username']
+    print(request.body.decode())
+    dic_body = request.body.decode()
+    dic_body = json.loads(dic_body)
+    # print(json.loads(request.body))
+    public = dic_body.get('pub')
+    private = dic_body.get('prv')
+    appid = dic_body.get('appid')
+    # print(public,private,appid)
+    print(type(appid), type(public), type(private))
+    res = write_pay_key(public, private, appid)
+    if res == '写入成功':
+        write_log(worker, '修改支付宝信息')
+        return HttpResponse('支付宝商户信息保存成功')
+    else:
+        return HttpResponse(res)
 
 
-def get_all_devices(request):
+def Read_pay_key(request):
     """
-    获取设备号
-            接收: {token , uid }
-        返回: {code , message ,
-        data:[
-            {}
-        ]
+    获取支付宝接口信息
+    :param request:
+    :return:
     """
-    res = {'code': 0, 'message': "", 'data': []}
-    try:
-        device_list = models.WebsiteDevice.objects.filter().values('device').all().distinct()
-        for device in device_list:
-            res['data'].append({'device': device['device']})
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = '账号查看失败!' + e.__repr__()
-    return JsonResponse(res)
+    request_boby_dict = eval(request.body)
+    worker = models.WebsiteUserinfo.objects.filter(id=request_boby_dict['uid']).values('username').first()['username']
+    if request.method == "POST":
+        res = read_pay_key()
+        write_log(worker, '获取支付宝信息')
+        return JsonResponse(res)
+    else:
+        return HttpResponse('请求失败')
 
 
-def Preview_SH_own_devices(request):
-    """
-    查看股东拥有设备号
-            接收: {token , uid , id(指定股东的id)}
-        返回: {code , message ,
-        data:[
-            {}
-        ]
-    """
-    res = {'code': 0, 'message': "", 'data': []}
-    sh_id = eval(request.body).get('id', None)
-    try:
-        SH_devices = models.WebsiteShareholderinfo.objects.filter(sh_id=sh_id).first().own_devices.all()
-        for item in SH_devices:
-            device_info = {'device': item.device, 'account': item.account, 'sequence': item.sequence,
-                           'wechat_id': item.wechat_id, 'qq_id': item.qq_id, 'phone_number': item.phone_number,
-                           'online_number': item.online_number, 'remark': item.remark,
-                           'is_promoting': item.is_promoting, 'eid': item.id}
-            res['data'].append(device_info)
-        # balance = models.WebsiteBalanceRecord.objects.values('balance').order_by('-id').first()['balance']
-        # res['data'] = balance
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = '设备查看失败!' + e.__repr__()
-    return JsonResponse(res)
-
-
-def Add_device(request):
-    """
-    增加设备
-    接收: {token,uid,
-	id :股东的id,
-	eids:[ ] //新增的设备的eid
-    }
-    返回 : 默认
-    """
-    res = {'code': 0, 'message': "", 'data': []}
-    sh_id = eval(request.body).get('id', None)
-
-    try:
-        add_devices_id = eval(request.body).get('eids', None)
-        SH = models.WebsiteShareholderinfo.objects.filter(sh_id=sh_id).first()
-        for eid in add_devices_id:
-            SH.own_devices.add(eid)
-            models.WebsiteDevice.objects.filter(id=eid).update(is_distributed=1)
-        res['message'] = '设备添加成功'
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = '设备添加失败!' + e.__repr__()
-    return JsonResponse(res)
-
-
-def Del_device(request):
-    """
-    删除股东所属设备
-    接收: {token,uid,
-	id :股东的id,
-	eids:[ ] //删除的设备的eid
-    }
-    返回 : 默认
-    """
-    res = {'code': 0, 'message': "", 'data': []}
-    sh_id = eval(request.body).get('id', None)
-    del_devices_id = eval(request.body).get('eids', None)
-    try:
-        SH = models.WebsiteShareholderinfo.objects.filter(sh_id=sh_id).first()
-        if del_devices_id:
-            SH.own_devices.remove(del_devices_id)
-            models.WebsiteDevice.objects.filter(id=del_devices_id).update(is_distributed=0)
-        # SH_devices = models.WebsiteShareholderinfo.objects.filter(SH_id=sh_id).first().own_devices.all()
-        # for item in SH_devices:
-        #     res['data'].append(item.device)
-        # balance = models.WebsiteBalanceRecord.objects.values('balance').order_by('-id').first()['balance']
-        res['message'] = '设备删除成功'
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = '设备删除失败!' + e.__repr__()
-    return JsonResponse(res)
-
-
-def add_cost(request):
-    """
-    增加成本
-    接收: {token,uid,month,cost_manpower,cost_rent,cost_device
-    }
-    返回 : 默认
-    """
-    res = {'code': 0, 'message': "", 'data': []}
-    operator_id = eval(request.body).get('uid', None)
-    month = eval(request.body).get('month', None)
-    cost_manpower = eval(request.body).get('cost_manpower', None)
-    cost_rent = eval(request.body).get('cost_rent', None)
-    cost_device = eval(request.body).get('cost_device', None)
-    cost_id = eval(request.body).get('cost_id', None)
-    cost_all = eval(request.body).get('cost_all', None)
-    type = eval(request.body).get('type', None)
-    try:
-        if type == 0 and not cost_id:
-            method = '新增'
-            month_cost = {'month': month,
-                          'employee_wages': cost_manpower,
-                          'rent': cost_rent,
-                          'device_cost': cost_device,
-                          'cost_all': cost_all,
-                          }
-            if month:
-                models.WebsiteMonthCost.objects.create(**month_cost)
-            res['message'] = month + '成本' + method + '成功'
-        elif type == 1 and cost_id:
-            method = '修改'
-            month_cost = {'month': month,
-                          'employee_wages': cost_manpower,
-                          'rent': cost_rent,
-                          'device_cost': cost_device,
-                          'cost_all': cost_all,
-                          }
-            if month:
-                models.WebsiteMonthCost.objects.filter(id=cost_id).update(**month_cost)
-            res['message'] = month + '成本' + method + '成功'
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = month + '成本' + method + '失败' + e.__repr__()
-    return JsonResponse(res)
-
-
-def preview_cost(request):
-    """
-    预览成本
-    接收: {token,uid
-    }
-    返回 : 默认
-    """
-    res = {'code': 0, 'message': "", 'data': []}
-    try:
-        month_costs = models.WebsiteMonthCost.objects.all()
-        for query in month_costs:
-            month_cost_record = {'month': query.month,
-                                 'employee_wages': query.cost_manpower,
-                                 'cost_rent': query.cost_rent,
-                                 'cost_device': query.device_cost,
-                                 }
-            res['data'].append(month_cost_record)
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = month + '成本添加失败' + e.__repr__()
-    return JsonResponse(res)
-
-
-# 主页获取金额信息
 class Get_tran_monery(APIView):
+    """
+    主页获取金额信息
+    """
+
     def post(self, request):
         try:
             res = get_tran_monery(request)
@@ -786,37 +489,45 @@ class Get_tran_monery(APIView):
         return JsonResponse(res)
 
 
-# 检测设备信息
 def get_device_information(request):
     """
+    检测设备信息
     :param request:
     :return: {'code': 0, 'message': '', 设备总数量/'count': 0, 正常运行设备数量/'count1': 0, 异常设备数量/'count2': 0, 'data': [设备相关信息]}
     """
     res = {'code': 0, 'message': '', 'count': 0, 'count1': 0, 'count2': 0, 'data': []}
     try:
-        a = serializers.serialize('json', models.Device_Information.objects.all())
-        b = serializers.serialize('json', models.Device_Information.objects.filter(
-            Q(software_status=0) & Q(wechat_status=0)).all())
-        a = json.loads(a)
-        b = json.loads(b)
+        info = models.Device_Information.objects.all()
+        b = models.Device_Information.objects.filter(
+            Q(software_status=0) & Q(wechat_status=0)).all()
         count = 0
         count1 = 0
-        for i in a:
+        for i in info:
             count += 1
-            res['data'].append(i)
-            res["count"] = count
+            res['data'].append({"id": i.id, "server": i.server, "device": i.device,
+                                "software_account": i.software_account,
+                                "wechat_id": i.wechat_id,
+                                "software_status": i.software_status,
+                                "wechat_status": i.wechat_status,
+                                "test_time": i.test_time,
+                                "remarks_information": i.remarks_information})
+        res["count"] = count
         for _ in b:
             count1 += 1
-            res["count1"] = count1
-            res["count2"] = count - count1
+        res["count1"] = count1
+        res["count2"] = count - count1
     except Exception as e:
         res['code'] = 1
         res['message'] = e.__repr__()
     return JsonResponse(res)
 
 
-# 写入检测信息
 def write_device_information(request):
+    """
+    写入检测设备信息
+    :param request:
+    :return:
+    """
     request = request.body.decode()
     request = json.loads(request)
     robot_total = request['robot_total']
@@ -841,15 +552,38 @@ def write_device_information(request):
     return HttpResponse('写入成功')
 
 
+# 这是检测设备的接口,首先获取IP列表，传入IP列表并使用远程调用函数批量执行服务器脚本，sshd的参数都是固定的，
+def run_device_state(request):
+    host_list = []
+    res = {'code': 0, 'message': ""}
+    try:
+        result = models.Device_Information.objects.values('server').distinct().order_by('server')
+        print(result)
+        for i in result:
+            ip = i["server"]
+            host_list.append(ip)
+        print(host_list)
+        yuan = Yuan(host_list)
+        t = threading.Thread(target=yuan.run)  # 开启调用执行远程函数
+        t.start()
+        res["message"] = '检测成功'
+    except Exception as e:
+        res = {'code': 1, 'message': e.__repr__()}
+    return JsonResponse(res)
+
+
 class Get_tran_record(APIView):
     """
-    获取转账信息接口
+    今日提现信息
     """
 
     def post(self, request):
+        id = request.data.get("uid", None)
+        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
+            'username']
         try:
-            method = request.data.get('type', None)
-            res = get_tran_record(method)
+            res = get_tran_record(request)
+            write_log(worker, '查看今日提现信息')
         except Exception as e:
             res = {'code': 1, 'message': e.__repr__(), 'data': []}
         return JsonResponse(res)
@@ -857,12 +591,92 @@ class Get_tran_record(APIView):
 
 class Get_tran_record1(APIView):
     """
-    今日转账信息
+    获取转账信息接口
     """
 
     def post(self, request):
+        id = request.data.get("uid", None)
+        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
+            'username']
         try:
-            res = get_tran_record1(request)
+            method = request.data.get('type', None)
+            res = get_tran_record1(method)
+            write_log(worker, "查看了转账信息")
         except Exception as e:
             res = {'code': 1, 'message': e.__repr__(), 'data': []}
         return JsonResponse(res)
+
+
+class Get_tran_record2(APIView):
+    """
+    获取待处理提现信息
+    """
+
+    def post(self, request):
+        id = request.data.get("uid", None)
+        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
+            'username']
+        try:
+            res = get_tran_record2(request)
+            write_log(worker, '查看了待处理提现信息')
+        except Exception as e:
+            res = {'code': 1, 'message': e.__repr__(), 'data': []}
+        return JsonResponse(res)
+
+
+class Updata_tran_record(APIView):
+    """
+    修改待处理提现信息
+    """
+
+    def post(self, request):
+        id = request.data.get("uid", None)
+        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
+            'username']
+        try:
+            result = updata_tran_record(request)
+            res = {'code': 0, 'message': result}
+            write_log(worker, '修改了待提现信息')
+        except Exception as e:
+            res = {'code': 1, 'message': e.__repr__()}
+        return JsonResponse(res)
+
+
+def balance_deposit(request):
+    """
+    存钱余额
+    :param request:
+    :return:｛'code': 0/1, 'message': error message,'data':{} }
+    """
+    res = {'code': 0, 'message': "", 'data': {}}
+    request_boby_dict = eval(request.body)
+    worker = models.WebsiteUserinfo.objects.filter(id=request_boby_dict['uid']).values('username').first()['username']
+    try:
+        deposit = float(eval(request.body).get('deposit', None))
+        balance = models.Balance_Information.objects.order_by("-id").values('balance').first()['balance']
+        balance_record = {'balance': round(balance + deposit, 2),
+                          'time': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                          "balance_change": "+" + str(deposit)}
+        models.Balance_Information.objects.create(**balance_record)
+        res['message'] = '存款成功' + "+" + str(deposit)
+        write_log(worker, '存入余额' + str(deposit) + "元")
+    except Exception as e:
+        res['code'] = 1
+        res['message'] = '存款失败!' + e.__repr__()
+    return JsonResponse(res)
+
+
+def balance_preview(request):
+    """
+    查看余额
+    :param request:
+    :return:｛'code': 0/1, 'message': error message,'data':{} }
+    """
+    res = {'code': 0, 'message': "", 'data': {}}
+    try:
+        balance = models.Balance_Information.objects.values('balance').order_by('-id').first()['balance']
+        res['data'] = balance
+    except Exception as e:
+        res['code'] = 1
+        res['message'] = '余额查看失败!' + e.__repr__()
+    return JsonResponse(res)

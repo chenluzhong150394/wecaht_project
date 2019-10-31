@@ -34,18 +34,3 @@ def excel(path):
         buff = {}
     return re
 
-# f = read_excel('../files/2018.7.30.xls')
-
-# r = excel('nums.xlsx')
-# print(len(r))
-# print(r)
-
-# def put(request):
-#     if request.method == 'GET':
-#         data = excel('nums.xlsx')
-#         for i in data:
-#             for j in data[i]:
-#                 print(i,j,data[i][j])
-#                 models.WebsiteInputdata.objects.create(username=i, time=j, data=data[i][j])
-#         # print(data)
-#         return HttpResponse("OK")
