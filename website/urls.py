@@ -8,7 +8,7 @@ urlpatterns = [
 
 
     #账目
-    url(r'^money$', views.payment.as_view()),  # 转账接口（websocket链接开始转账）
+    url(r'^money$', views.payment.as_view()),  # 提交转账接口
     url(r'^moneylog1$', views.PaymentRecord.as_view()),  # 获取转账记录
     url(r'^download_log$', views.download_log),  # 记录下载log
     url(r'^exec_each_machines$', views.get_excel),  # 激活下载器
