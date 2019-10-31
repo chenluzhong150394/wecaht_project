@@ -3,6 +3,9 @@ from website import views
 urlpatterns = [
     url(r'^login$', views.Login.as_view()),  # 登陆验证 1
 
+    # test测试
+    url(r'^test$',views.test),
+
 
     #账目
     url(r'^money$', views.payment.as_view()),  # 转账接口（websocket链接开始转账）
@@ -10,7 +13,7 @@ urlpatterns = [
     url(r'^download_log$', views.download_log),  # 记录下载log
     url(r'^exec_each_machines$', views.get_excel),  # 激活下载器
     url(r'^upload_excel$', views.upload_excel),  # 上传转账表
-    url(r'^download_transfer_excel$', views.download_excel),   # 下载转账表
+    # url(r'^download_transfer_excel$', views.download_excel),   # 下载转账表
 
     #余额
     url(r'^balance_preview$', views.balance_preview),  # 余额查看 1

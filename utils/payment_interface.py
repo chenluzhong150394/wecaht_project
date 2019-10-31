@@ -19,7 +19,7 @@ class Payment(object):
         '''
         self.app_private_key_string = open(current_path + "/app_private_key.txt").read()  # 应用私钥（默认从两个TXT文件中读取）
         self.alipay_public_key_string = open(current_path + "/alipay_public_key.txt").read()  # 支付宝公钥
-        self.appid = open(current_path + "/appid.txt").read()  # 支付宝应用id
+        self.appid = int(open(current_path + "/appid.txt").read())  # 支付宝应用id
         self.alipay_each = AliPay(
             appid=self.appid,
             app_notify_url=url,
@@ -29,10 +29,11 @@ class Payment(object):
             debug=False
         )
 
-    def pay(self, payee_account, amount, payee_real_name=None, remark=None, payer_show_name=None,
+    def pay(self, payee_account, amount, id, payee_real_name=None, remark=None, payer_show_name=None,
             payee_type="ALIPAY_LOGONID"):
         '''
         发起转账
+        :param id : 是数据库中体现记录的唯一值
         :param payee_account: 收款方账户
         :param amount: 转账金额
         :param payee_real_name:收款方姓名
@@ -43,7 +44,7 @@ class Payment(object):
         '''
         out_biz_no = datetime.now().strftime("%Y%m%d%H%M%S") + str(random.randint(1000, 9999))
         data = {'payee_account': None, 'amount': None, 'payee_real_name': None, 'remark': None, 'order_id': None,
-                'out_biz_no': None, 'pay_date': None, 'status': None}
+                'out_biz_no': None, 'pay_date': None, 'status': None, "id":id}
         try:
             # 使用封装好的方法去执行转账操作，并将返回值赋值给result这个变量
             result = self.alipay_each.api_alipay_fund_trans_toaccount_transfer(
@@ -65,9 +66,9 @@ class Payment(object):
             #转账超时而失败怎么办？直接更新数据库中待体现的那条记录，status为1 并remark备注返回
             # error = [payee_account, amount, payee_real_name, result['sub_msg'], result['out_biz_no']]
             return data
-        # result={'code':'10000','msg':'Success','order_id': '','out_biz_no': '',  'pay_date': '2017-06-26 14:36:25'}
-        # 接口文档：https://docs.open.alipay.com/api_28/alipay.fund.trans.toaccount.transfer
 
+        #成功的返回值 result={'code':'10000','msg':'Success','order_id': '','out_biz_no': '',  'pay_date': '2017-06-26 14:36:25'}
+        # 接口文档：https://docs.open.alipay.com/api_28/alipay.fund.trans.toaccount.transfer
         try:
             if result['code'] == '10000':
                 # if result['msg'] == "Success":

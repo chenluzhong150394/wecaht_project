@@ -115,24 +115,27 @@ def upload_excel(request):
         return JsonResponse(res)
 
 
-        # file_dir = u"backup/"
-        # file_list = os.listdir(file_dir)
-        # file_list.sort(key=lambda fn: os.path.getmtime(file_dir + fn) if not os.path.isdir(file_dir + fn) else 0)
-        # file = read_excel(file_dir + file_list[-1])  # 读取Excel表
-        # pay = Pay(2018110661992863)
-        # 读取上传的Excel文件的方式转账，上传成功后通过websocket连接就开始转账，并实时返回转账结果
-        # 得到最新的xls表
+def test(request):
+    # (6.18, '15991697544', '返利到账', '吴红芳', '18')
+    res = models.WebsiteTranRecord.objects.filter(status=0).all().values("money", "zfb_number", "name", "device")
+    need_que = []
+    for i in res:
+        a = i.values()
+        need_que.append(tuple(a))
+    print(need_que)
+    models.WebsiteTranRecord.objects.filter(id=2).update(status=0)
+    return HttpResponse("执行成功")
+
 class payment(APIView):
     def post(self, request):
-        res = {'code': 0, 'message': "", 'data': []}
+        data = {}
+        res = {'code': 0, 'message': "", 'data': data}
         # 查询数据库中的余额
         balance = models.Balance_Information.objects.order_by("-id").values('balance').first()['balance']
         print(balance)
-        ## from utils.payment_interface import Payment as Pay
         # 实例化转账工具类并赋值给pay这个变量
         pay = Pay()
-        data = []
-        # 记录一次转账的总钱数与次数
+        # 记录成功转账的总钱数与次数
         record_for_payment = 0.0
         count_for_succ = 0
 
@@ -140,85 +143,58 @@ class payment(APIView):
         record_for_unsucc = 0.0
         count_for_unsucc = 0
 
-        # 判断是否重复转账 两天内
-        # 当前日期
-        # now_date = datetime.datetime.now().strftime("%Y-%m-%d")
-        # yesterday_date = (datetime.datetime.today() + datetime.timedelta(-1)).strftime("%Y-%m-%d")
-        # payment_record = models.WebsiteTranRecord.objects.filter(
-        #     Q(pay_date__startswith=now_date) | Q(pay_date__startswith=yesterday_date)
-        # ).values('money', 'zfb_number', 'name', 'device').all()
-        #
-        #
-        # ## record_list这个列表是一个元组，
-        # record_list = []
-        # # (8.73, '2323983031@qq.com', '张景', '18')
-        # for temp_record in payment_record:
-        #     record_list.append(tuple(temp_record.values()))
-        # # 当前时间点 用于判断数据库写入是否完全
-        # now_date_time = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + '0000'
-        #
+        #(6.18, '15991697544', '返利到账', '吴红芳', '18')
         need_pay_queue = []
-        check_pay_queue = []
-        # for item in file:
-        #     need_pay_queue.append(tuple(item))
-        #     check_pay_queue.append((str(item[0]), item[1], item[3], item[4]))
-        #
-        # duplicate_record = list(set(check_pay_queue) & (set(record_list)))
-        # if len(duplicate_record) > 0:
-        #     res['message'] = "有重复转账记录："
-        #     for item in duplicate_record:
-        #         res['message'] += '\n 提现人:{} ,提现账号:{}, 提现金额:{}, 提现设备:{}'.format(item[2], item[1], item[0], item[3])
-        #     res['code'] = 1
-        #     return JsonResponse(res)
+
+        # models.WebsiteTranRecord.objects.all().values("money", "zfb_number", "")
+        ## 取出数据库中所有待体现的记录到一个元组,
+        temp_ob = models.WebsiteTranRecord.objects.filter(status=0).all().values("money", "zfb_number", "name", "id", "device")
+        for i in temp_ob:
+            a = i.values()
+            need_pay_queue.append(tuple(a))
+        print(need_pay_queue) # (23.2, 'dxxv@qdsq.com', '丁海亚', 2,'12号')
+
         # 开始转账
         error_update_counter = 0
         for item in need_pay_queue:
+            # item(金额,账号,姓名,id,设备名)
+            # pay(账号, 金额（int）, id, 姓名, 备注=返利到账)
+            # (6.18, '15991697544', '返利到账', '吴红芳', '18')
             rec = pay.pay(str(item[1]), item[0], item[3], item[2])
             rec['remark'] = item[4]
+            id = rec["id"]
             if rec['status'] == '转账成功':
                 count_for_succ += 1
                 record_for_payment += float(rec['amount'])
                 rec['first_pay_status'] = 1
                 rec['success_time'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                models.WebsiteTranRecord.objects.filter(id=id).update(status=1, pay_date=rec["pay_date"],order_id=rec['order_id'],out_biz_no=rec['out_biz_no'])
+                print("更新数据库成功")
             else:
                 rec['first_pay_status'] = 0
+                models.WebsiteTranRecord.objects.filter(id=id).update(status=2,remark=rec['status'],out_biz_no=rec['out_biz_no'])
+                # 记录失败总数与金额
                 count_for_unsucc += 1
                 record_for_unsucc += float(rec['amount'])
-            # 通过websocket返回转账结果
-            try:  # 尝试读取第5列数据，如果没有则是新表，则将返回的数据直接写入到数据库中,否则为修改之后的表，更新原来的状态
-                out_biz_no = item[5]
-                rec['first_pay_status'] = 0
-                rec['out_biz_no'] = out_biz_no
-                if out_biz_no:
-                    models.WebsitePayment.objects.filter(out_biz_no=out_biz_no).update(**rec)
-                    error_update_counter += 1
-                    data.append(rec)
-            except Exception as e:
-                # 此处并不是转账出错了
-                data.append(rec)
-                ## 着里需要改---------------------------------------------------------------------------------
-                models.WebsitePayment.objects.create(**rec)
+        res['message'] = '转账成功,成功为%s名用户转帐操作,' % count_for_succ + '有%s名用户转账失败,请及时到待体现页面处理' % count_for_unsucc
 
-        # 判断数据是否写入完全
-        new_payment_record = models.WebsitePayment.objects.filter(out_biz_no__gte=now_date_time).filter(
-            ~Q(out_biz_no='no biz_no!!!!!!!')).all()
-        if len(new_payment_record) == len(need_pay_queue) or error_update_counter == len(need_pay_queue):
-            # 数据库写入完整
-            pass
-        else:
-            res['code'] = 1
-            res['message'] = '数据库写入不完全'
-        # 新增余额记录
+        # # 新增余额记录
         if record_for_payment > 0:
             balance_record = {'account_name': '铁牛5', 'balance': round(balance - record_for_payment, 2),
                               'update_time': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                               'last_time_balance': round(balance, 2), 'last_cost': round(record_for_payment, 2)}
             models.WebsiteBalanceRecord.objects.create(**balance_record)
-        res['data'].extend(data)
-        # res['data'].append({'order_unsucc': count_for_unsucc, 'amout_unsucc': round(record_for_unsucc, 2),
-        #                     'order_succ': count_for_succ, 'amout_succ': round(record_for_payment, 2)})
-        # Write_Payment_record(data)
-        # print(data)
+        # 总操作用户
+        data['count'] = len(temp_ob)
+        # 转账总金额
+        data['count_num'] = record_for_payment + record_for_unsucc
+        # 实际转账金额
+        data['tran_num'] = record_for_payment
+        # 成功转账用户
+        data['count_for_succ'] = count_for_succ
+
+        res = {'code': 0, 'message': "", 'data': data}
+
         return JsonResponse(res)
 
 

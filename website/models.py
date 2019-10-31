@@ -140,7 +140,7 @@ class WebsiteTranRecord(models.Model):
     remark = models.CharField(max_length=64,blank=True,null=True)
     # 后端生成的一个编号（时间+随机数）
     out_biz_no = models.CharField(max_length=64, blank=True, null=True)
-    # 状态
+    # 状态(0是待转账，1是成功，2是失败，3是再次转账成功)
     status = models.IntegerField(null=True, default=0)
     # 操作人
     operator = models.CharField(max_length=30, blank=True, null=True)
