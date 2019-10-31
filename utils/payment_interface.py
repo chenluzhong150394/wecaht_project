@@ -45,8 +45,9 @@ class Payment(object):
         data = {'payee_account': None, 'amount': None, 'payee_real_name': None, 'remark': None, 'order_id': None,
                 'out_biz_no': None, 'pay_date': None, 'status': None}
         try:
+            # 使用封装好的方法去执行转账操作，并将返回值赋值给result这个变量
             result = self.alipay_each.api_alipay_fund_trans_toaccount_transfer(
-                out_biz_no=out_biz_no,
+                out_biz_no=out_biz_no,  # 订单编号（时间字符串加随机数）
                 payee_type=payee_type,  # 收款方账户类型
                 payee_account=payee_account,  # 收款方账户
                 amount=amount,  # 转账金额
@@ -55,11 +56,13 @@ class Payment(object):
                 payer_show_name=payer_show_name  # 付款方姓名
 
             )
+        ## try代码块里面的是进行转账操作，如果说转账操作因为网络问题延迟了，会报错，则我们就执行下面代码块里面的内容。
         except:
             data['payee_account'] = payee_account
             data['amount'] = amount
             data['payee_real_name'] = payee_real_name
             data['status'] = "转账过程中超过支付宝限制时间，请排除已转账的记录重新转账！"
+            #转账超时而失败怎么办？直接更新数据库中待体现的那条记录，status为1 并remark备注返回
             # error = [payee_account, amount, payee_real_name, result['sub_msg'], result['out_biz_no']]
             return data
         # result={'code':'10000','msg':'Success','order_id': '','out_biz_no': '',  'pay_date': '2017-06-26 14:36:25'}

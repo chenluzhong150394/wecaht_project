@@ -72,6 +72,10 @@ class PaymentRecord(APIView):
         return JsonResponse(res)
 
 
+"""
+    导出表格函数
+
+
 def download_excel(request):
     try:
         time.sleep(10)
@@ -87,6 +91,8 @@ def download_excel(request):
     except Exception as e:
         traceback.print_exc()
         return HttpResponse('出错啦！')
+
+"""
 
 
 def upload_excel(request):
@@ -109,54 +115,61 @@ def upload_excel(request):
         return JsonResponse(res)
 
 
+        # file_dir = u"backup/"
+        # file_list = os.listdir(file_dir)
+        # file_list.sort(key=lambda fn: os.path.getmtime(file_dir + fn) if not os.path.isdir(file_dir + fn) else 0)
+        # file = read_excel(file_dir + file_list[-1])  # 读取Excel表
+        # pay = Pay(2018110661992863)
+        # 读取上传的Excel文件的方式转账，上传成功后通过websocket连接就开始转账，并实时返回转账结果
+        # 得到最新的xls表
 class payment(APIView):
     def post(self, request):
         res = {'code': 0, 'message': "", 'data': []}
-        # 读取上传的Excel文件的方式转账，上传成功后通过websocket连接就开始转账，并实时返回转账结果
-        # 得到最新的xls表
-        balance = models.WebsiteBalanceRecord.objects.order_by("-id").values('balance').first()['balance']
+        # 查询数据库中的余额
+        balance = models.Balance_Information.objects.order_by("-id").values('balance').first()['balance']
         print(balance)
-        file_dir = u"backup/"
-        file_list = os.listdir(file_dir)
-        file_list.sort(key=lambda fn: os.path.getmtime(file_dir + fn) if not os.path.isdir(file_dir + fn) else 0)
-        file = read_excel(file_dir + file_list[-1])  # 读取Excel表
-        # pay = Pay(2018110661992863)
+        ## from utils.payment_interface import Payment as Pay
+        # 实例化转账工具类并赋值给pay这个变量
         pay = Pay()
         data = []
-        # 记录一次转账的总钱数
+        # 记录一次转账的总钱数与次数
         record_for_payment = 0.0
         count_for_succ = 0
 
-        # 失败的总钱数
+        # 失败的总钱数与次数
         record_for_unsucc = 0.0
         count_for_unsucc = 0
 
         # 判断是否重复转账 两天内
         # 当前日期
-        now_date = datetime.datetime.now().strftime("%Y-%m-%d")
-        yesterday_date = (datetime.datetime.today() + datetime.timedelta(-1)).strftime("%Y-%m-%d")
-        payment_record = models.WebsitePayment.objects.filter(
-            Q(pay_date__startswith=now_date) | Q(pay_date__startswith=yesterday_date)
-        ).values('amount', 'payee_account', 'payee_real_name', 'remark').all()
-        record_list = []
-        for temp_record in payment_record:
-            record_list.append(tuple(temp_record.values()))
-        # 当前时间点 用于判断数据库写入是否完全
-        now_date_time = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + '0000'
-
+        # now_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        # yesterday_date = (datetime.datetime.today() + datetime.timedelta(-1)).strftime("%Y-%m-%d")
+        # payment_record = models.WebsiteTranRecord.objects.filter(
+        #     Q(pay_date__startswith=now_date) | Q(pay_date__startswith=yesterday_date)
+        # ).values('money', 'zfb_number', 'name', 'device').all()
+        #
+        #
+        # ## record_list这个列表是一个元组，
+        # record_list = []
+        # # (8.73, '2323983031@qq.com', '张景', '18')
+        # for temp_record in payment_record:
+        #     record_list.append(tuple(temp_record.values()))
+        # # 当前时间点 用于判断数据库写入是否完全
+        # now_date_time = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + '0000'
+        #
         need_pay_queue = []
         check_pay_queue = []
-        for item in file:
-            need_pay_queue.append(tuple(item))
-            check_pay_queue.append((str(item[0]), item[1], item[3], item[4]))
-
-        duplicate_record = list(set(check_pay_queue) & (set(record_list)))
-        if len(duplicate_record) > 0:
-            res['message'] = "有重复转账记录："
-            for item in duplicate_record:
-                res['message'] += '\n 提现人:{} ,提现账号:{}, 提现金额:{}, 提现设备:{}'.format(item[2], item[1], item[0], item[3])
-            res['code'] = 1
-            return JsonResponse(res)
+        # for item in file:
+        #     need_pay_queue.append(tuple(item))
+        #     check_pay_queue.append((str(item[0]), item[1], item[3], item[4]))
+        #
+        # duplicate_record = list(set(check_pay_queue) & (set(record_list)))
+        # if len(duplicate_record) > 0:
+        #     res['message'] = "有重复转账记录："
+        #     for item in duplicate_record:
+        #         res['message'] += '\n 提现人:{} ,提现账号:{}, 提现金额:{}, 提现设备:{}'.format(item[2], item[1], item[0], item[3])
+        #     res['code'] = 1
+        #     return JsonResponse(res)
         # 开始转账
         error_update_counter = 0
         for item in need_pay_queue:
@@ -183,6 +196,7 @@ class payment(APIView):
             except Exception as e:
                 # 此处并不是转账出错了
                 data.append(rec)
+                ## 着里需要改---------------------------------------------------------------------------------
                 models.WebsitePayment.objects.create(**rec)
 
         # 判断数据是否写入完全
