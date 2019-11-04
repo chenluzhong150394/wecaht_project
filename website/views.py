@@ -203,6 +203,9 @@ def test(request):
 
 class payment(APIView):
     def post(self, request):
+        id = request.data.get("uid", None)
+        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
+            'username']
         data = {}
         res = {'code': 0, 'message': "", 'data': data}
         # 查询数据库中的余额
@@ -280,6 +283,7 @@ class payment(APIView):
         data['count_for_succ'] = count_for_succ
 
         res = {'code': 0, 'message': messgess, 'data': data}
+        write_log(worker, "操作了批量转账")
 
         return JsonResponse(res)
 
@@ -291,8 +295,12 @@ class Pay_one(APIView):
     """
 
     def post(self, request):
+        id = request.data.get("uid", None)
+        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
+            'username']
         try:
             res = pay_one(request)
+            write_log(worker, "操作了单笔转账")
         except Exception as e:
             res = {'code': 1, 'message': e.__repr__(), 'data': []}
         return JsonResponse(res)
