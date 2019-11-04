@@ -19,6 +19,7 @@ class Authtication(BaseAuthentication):
             # auth[i] = True
 
         auth.append('/oa/customerstatistics')
+        auth.append('/oa/tranrecord3')
         now_request_path = "/".join(request._request.path.split('/')[:3])
         if now_request_path not in auth:
             raise exceptions.AuthenticationFailed({'code': 1, 'message': '无权访问！', 'data': {}})

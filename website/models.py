@@ -145,8 +145,6 @@ class WebsiteTranRecord(models.Model):
     # 操作人
     operator = models.CharField(max_length=30, blank=True, null=True)
 
-
-
     class Meta:
         db_table = 'website_tran_record'
 

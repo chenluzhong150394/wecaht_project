@@ -14,6 +14,7 @@ import hashlib
 import time
 import datetime
 from django.db.models import Q
+from utils.payment_interface import Payment as Pay
 from django.db.models import Count
 from django.forms.models import model_to_dict
 import traceback
@@ -71,53 +72,101 @@ def login(username, password):
         return res
 
 
-def get_record(start_time, end_time, method='payment_all'):
-    """
-    获取转账记录
-    :param start_time: 开始时间
-    :param end_time:  结束时间
-    :param method: 记录类型（默认全部）
-
-    :return: {'code':0/1, 'message': error message ,\
-                'data':[{'amount':  ,'account':  ,'name':  ,'remark':  , 'out_biz_no':  ,'status':  }, {   },  {   } ]}
-    """
+# 单次转帐接口
+def pay_one(request):
+    req = json.loads(request.body.decode())
+    # 查询数据库中的余额
+    balance = int(models.Balance_Information.objects.order_by("-id").values('balance').first()['balance'])
+    print(balance)
+    # payee_account, amount, id, payee_real_name
+    # (金额, 账号, 姓名, id, 设备名)
+    id = req['id']
+    te_order = models.WebsiteTranRecord.objects.filter(id=id).values("money", "zfb_number", "name", "id", "device")[0]
     res = {'code': 0, 'message': "", 'data': []}
-    first_pay_status_dict = {'first_succ': 1, 'no_first_succ': 0, }
-    try:
-        # 没有传递参数默认显示当天数据
-        if not start_time or not end_time:
-            end_time = datetime.datetime.now().strftime("%Y-%m-%d")
-            start_time = end_time
+    data_list = []
+    for key, vaules in te_order.items():
+        data_list.append(vaules)
+    data_tuple = tuple(data_list)
+    # 取出要进行转账的用户信息与金额
+    pay = Pay()
+    # (1.2, '2245966773@qq.com', '陈露中', 1, '12号')
+    # payee_account, amount, id, payee_real_name = None, remark = None,
+    rec = pay.pay(data_tuple[1], data_tuple[0], data_tuple[3], data_tuple[2], "返利到账")
+    rec['remark'] = data_tuple[4]
+    cout = 0
+    if rec['status'] == '转账成功':
+        rec['success_time'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        models.WebsiteTranRecord.objects.filter(id=id).update(status=3, pay_date=rec["pay_date"],
+                                                              order_id=rec['order_id'], out_biz_no=rec['out_biz_no'],
+                                                              remark=rec["status"])
+        print("更新数据库成功")
+        cout += 1
+        res = {'code': 0, 'message': "转帐成功", 'data': {}}
+    else:
+        now_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        models.WebsiteTranRecord.objects.filter(id=id).update(status=2, remark=rec['status'],
+                                                              out_biz_no=rec['out_biz_no'])
+        shibai = rec['status']
+        res = {'code': 1, 'message': shibai, 'data': {}}
+    # # 新增余额记录
 
-        # 前端传递的时间格式为2018-08-08，由于数据库里面时通过order_id字段查询时间格式为20180808，需要处理时间格式
-        # 因为要比较outbizno 后面增加10个0
-        start_time = start_time.replace('-', '') + '0' * 10
-        end_time = end_time.replace('-', '') + '9' * 10
-        # 查询所有的转账记录
-        if method == 'payment_all':
-            info = models.WebsitePayment.objects.filter(out_biz_no__gte=start_time).filter(
-                out_biz_no__lte=end_time).all()
-        # 查询转账失败记录(已补交和未补缴)的记录
-        elif method == 'payment_fail':
-            info = models.WebsitePayment.objects.filter(out_biz_no__gte=start_time).filter(
-                out_biz_no__lte=end_time, first_pay_status=first_pay_status_dict['no_first_succ']).all()
-        # 待补交(未补缴)
-        else:
-            info = models.WebsitePayment.objects.filter(out_biz_no__gte=start_time).filter(
-                out_biz_no__lte=end_time, first_pay_status=first_pay_status_dict['no_first_succ']).exclude(
-                status='转账成功').all()
-
-        for i in info:
-            res['data'].append(
-                {'amount': i.amount, 'account': i.payee_account, 'name': i.payee_real_name, 'remark': i.remark,
-                 'out_biz_no': i.out_biz_no, 'status': i.status, 'first_pay_status': i.first_pay_status,
-                 'pay_date': i.pay_date})
-
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = e.__repr__()
+    if cout > 0:
+        balance2 = '-' + str(round(data_tuple[0], 2))
+        balance_record = {'balance': round(balance - data_tuple[0], 2),
+                          'time': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                          'balance_change': balance2, 'status': 1}
+        models.Balance_Information.objects.create(**balance_record)
 
     return res
+
+
+# def get_record(start_time, end_time, method='payment_all'):
+#     """
+#     获取转账记录
+#     :param start_time: 开始时间
+#     :param end_time:  结束时间
+#     :param method: 记录类型（默认全部）
+#
+#     :return: {'code':0/1, 'message': error message ,\
+#                 'data':[{'amount':  ,'account':  ,'name':  ,'remark':  , 'out_biz_no':  ,'status':  }, {   },  {   } ]}
+#     """
+#     res = {'code': 0, 'message': "", 'data': []}
+#     first_pay_status_dict = {'first_succ': 1, 'no_first_succ': 0, }
+#     try:
+#         # 没有传递参数默认显示当天数据
+#         if not start_time or not end_time:
+#             end_time = datetime.datetime.now().strftime("%Y-%m-%d")
+#             start_time = end_time
+#
+#         # 前端传递的时间格式为2018-08-08，由于数据库里面时通过order_id字段查询时间格式为20180808，需要处理时间格式
+#         # 因为要比较outbizno 后面增加10个0
+#         start_time = start_time.replace('-', '') + '0' * 10
+#         end_time = end_time.replace('-', '') + '9' * 10
+#         # 查询所有的转账记录
+#         if method == 'payment_all':
+#             info = models.WebsitePayment.objects.filter(out_biz_no__gte=start_time).filter(
+#                 out_biz_no__lte=end_time).all()
+#         # 查询转账失败记录(已补交和未补缴)的记录
+#         elif method == 'payment_fail':
+#             info = models.WebsitePayment.objects.filter(out_biz_no__gte=start_time).filter(
+#                 out_biz_no__lte=end_time, first_pay_status=first_pay_status_dict['no_first_succ']).all()
+#         # 待补交(未补缴)
+#         else:
+#             info = models.WebsitePayment.objects.filter(out_biz_no__gte=start_time).filter(
+#                 out_biz_no__lte=end_time, first_pay_status=first_pay_status_dict['no_first_succ']).exclude(
+#                 status='转账成功').all()
+#
+#         for i in info:
+#             res['data'].append(
+#                 {'amount': i.amount, 'account': i.payee_account, 'name': i.payee_real_name, 'remark': i.remark,
+#                  'out_biz_no': i.out_biz_no, 'status': i.status, 'first_pay_status': i.first_pay_status,
+#                  'pay_date': i.pay_date})
+#
+#     except Exception as e:
+#         res['code'] = 1
+#         res['message'] = e.__repr__()
+#
+#     return res
 
 
 def write_log(username, record):
@@ -485,8 +534,8 @@ def get_tran_record(request):
         for i in info:
             res['data1'].append(
                 {"id": i.id, 'monery': i.money, 'name': i.name, 'zfb': i.zfb_number,
-                 'device': i.device, 'status': i.status, 'tran_time': i.tran_time,
-                 'tran_number': i.tran_number, 'operator': i.operator})
+                 'device': i.device, 'pay_date': i.pay_date, 'order_id': i.order_id,
+                 'remake': i.remark, 'out_biz_no': i.out_biz_no, 'status': i.status, 'operator': i.operator})
     except Exception as e:
         res['code'] = 1
         res['message'] = e.__repr__()
@@ -494,7 +543,7 @@ def get_tran_record(request):
     return res
 
 
-def get_tran_record1(method):
+def get_tran_record1(start_time, end_time, method):
     """
     获取转账记录
     :param start_time: 开始时间
@@ -506,21 +555,30 @@ def get_tran_record1(method):
     """
     res = {'code': 0, 'message': "", 'data': []}
     try:
+        # 没有传递参数默认显示当天数据
+        if not start_time or not end_time:
+            end_time = datetime.datetime.now().strftime("%Y-%m-%d")
+            start_time = end_time
+        start_time = start_time.replace('-', '') + '0' * 10
+        end_time = end_time.replace('-', '') + '9' * 10
         # 待补交(未补缴)
         if method == 'payment_fail':
-            info = models.WebsiteTranRecord.objects.filter(status=2).all()
+            info = models.WebsiteTranRecord.objects.filter(out_biz_no__gte=start_time).filter(
+                out_biz_no__lte=end_time).filter(status=2).all()
         # 查询转账失败记录(已补交和未补缴)的记录
         elif method == 'payment_fail1':
-            info = models.WebsiteTranRecord.objects.filter(Q(status=2) | Q(status=3)).all()
+            info = models.WebsiteTranRecord.objects.filter(out_biz_no__gte=start_time).filter(
+                out_biz_no__lte=end_time).filter(Q(status=2) | Q(status=3)).all()
         # 查询所有的转账记录
         else:
-            info = models.WebsiteTranRecord.objects.exclude(status=0).all()
+            info = models.WebsiteTranRecord.objects.filter(out_biz_no__gte=start_time).filter(
+                out_biz_no__lte=end_time).exclude(status=0).all()
 
         for i in info:
             res['data'].append(
                 {"id": i.id, 'monery': i.money, 'name': i.name, 'zfb': i.zfb_number,
-                 'device': i.device, 'status': i.status, 'tran_time': i.tran_time,
-                 'tran_number': i.tran_number, 'operator': i.operator})
+                 'device': i.device, 'pay_date': i.pay_date, 'order_id': i.order_id,
+                 'remake': i.remark, 'out_biz_no': i.out_biz_no, 'status': i.status, 'operator': i.operator})
 
     except Exception as e:
         res['code'] = 1
@@ -544,9 +602,44 @@ def get_tran_record2(request):
             monery += i.money
             res['data1'].append(
                 {"id": i.id, 'monery': i.money, 'name': i.name, 'zfb': i.zfb_number,
-                 'device': i.device, 'status': i.status, 'tran_time': i.tran_time,
-                 'tran_number': i.tran_number, 'operator': i.operator})
-        res["data"].append({"count": count, "monery": monery, "balance": balance})
+                 'device': i.device, 'pay_date': i.pay_date, 'order_id': i.order_id,
+                 'remake': i.remark, 'out_biz_no': i.out_biz_no, 'status': i.status, 'operator': i.operator})
+        res["data"].append({"count": count, "monery": round(monery, 2), "balance": balance})
+    except Exception as e:
+        res['code'] = 1
+        res['message'] = e.__repr__()
+
+    return res
+
+
+def get_tran_record3(type, monery, name, zfb):
+    """
+    根据不同的类型筛选转账记录中符合的记录
+    :param type: 类型
+    :param monery: 金额
+    :param name: 名字
+    :param zfb: 支付宝账户
+    :return: 返回的是数据库中符号条件的字段
+    """
+
+    res = {'code': 0, 'message': "", 'data': []}
+    try:
+        # 根据金额选
+        if type == 'monery':
+            info = models.WebsiteTranRecord.objects.filter(money=monery).exclude(status=0).all()
+        # 根据姓名筛选
+        elif type == 'name':
+            info = models.WebsiteTranRecord.objects.filter(name=name).exclude(status=0).all()
+        # 根据支付宝账号筛选
+        else:
+            info = models.WebsiteTranRecord.objects.filter(zfb_number=zfb).exclude(status=0).all()
+
+        for i in info:
+            res['data'].append(
+                {"id": i.id, 'monery': i.money, 'name': i.name, 'zfb': i.zfb_number,
+                 'device': i.device, 'pay_date': i.pay_date, 'order_id': i.order_id,
+                 'remake': i.remark, 'out_biz_no': i.out_biz_no, 'status': i.status, 'operator': i.operator})
+
     except Exception as e:
         res['code'] = 1
         res['message'] = e.__repr__()

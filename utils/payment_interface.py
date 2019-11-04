@@ -14,7 +14,7 @@ class Payment(object):
     def __init__(self, url="https://openapi.alipay.com/gateway.do"):
         '''
         支付接口初始化
-        :param appid: 商户appid
+        :param appid: 商户appid（直接从文件读取）
         :param url: 支付宝接口url
         '''
         self.app_private_key_string = open(current_path + "/app_private_key.txt").read()  # 应用私钥（默认从两个TXT文件中读取）
@@ -84,7 +84,7 @@ class Payment(object):
             # 转账失败
             # result={'code': '40004', 'msg': 'Business Failed', 'sub_code': 'PAYEE_USER_INFO_ERROR', 'sub_msg': '支付宝账号和姓名不匹配，请确认姓名是否正确', 'out_biz_no': '20180802150835'}
             else:
-                print(payee_account, amount, result['sub_msg'], result["out_biz_no"])
+                print(payee_account, amount, result['sub_msg'])
                 data['payee_account'] = payee_account
                 data['amount'] = amount
                 data['payee_real_name'] = payee_real_name
@@ -97,7 +97,8 @@ class Payment(object):
             data['payee_account'] = payee_account
             data['amount'] = amount
             data['payee_real_name'] = payee_real_name
-            data['out_biz_no'] = result['out_biz_no']
+            # data['out_biz_no'] = result['out_biz_no']
+            data['out_biz_no'] = out_biz_no
             data['status'] = "账号问题，转账失败！！！！！！！"
             # error = [payee_account, amount, payee_real_name, result['sub_msg'], result['out_biz_no']]
             return data
