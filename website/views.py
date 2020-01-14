@@ -1,10 +1,14 @@
 ﻿import os
+import sqlite3
+import shutil
 import traceback
-
 import xlrd
 from django.shortcuts import render, HttpResponse, redirect
 from django.http import FileResponse, JsonResponse
 # from django.views import View
+from website import models
+from OA import settings
+from .utils1 import create_mch_billno
 from website.datebase import *
 from utils.transfer import Haproxy
 from datetime import datetime
@@ -13,794 +17,208 @@ import json
 import threading
 import datetime
 from django.db.models import Q
-# websocket
-import shutil
-from dwebsocket.decorators import accept_websocket
-# 转账
-from utils.read_excel import read_excel
-from utils.update_pay_key import write_pay_key
-from utils.read_pay_key import read_pay_key
-from utils.yuancheng import Yuan
+import hashlib
+import requests
+import requests
+from xml.etree import ElementTree
+
+list1 = ['TQUI51nP3YR5J8OZdMCSivqRI5igK15NGvdjUXsODSo', 'TQUI51nP3YR5J8OZdMCSil7bMwLskOLvFP9l4YQLHQ4', 'TQUI51nP3YR5J8OZdMCSijzTkEopkPy_c_uEHNMHR1c', 'TQUI51nP3YR5J8OZdMCSisZ2EA89vq39S7GOaPhj4XI', 'TQUI51nP3YR5J8OZdMCSiqve8pwMeQeMobHhyFro_yc', 'TQUI51nP3YR5J8OZdMCSitAfyaZGWG4NsN2P9ZnL5y4', 'TQUI51nP3YR5J8OZdMCSihKLumbIZZY85ywyDFhgocs', 'TQUI51nP3YR5J8OZdMCSinIrrKVygYMb8ppWP-cQSmQ', 'TQUI51nP3YR5J8OZdMCSil9A9FdaL_Svb8fo6pVa7ck', 'TQUI51nP3YR5J8OZdMCSit5UQtdF3E44lIOxkzk3tt8', 'TQUI51nP3YR5J8OZdMCSivnnQmlIIdjgGt-9XbBrNk0', 'TQUI51nP3YR5J8OZdMCSikJ-2vDdXdwde_RT-Bfpjxw']
 
 
-def init(request):
-    return render(request, '../dist/../templates/index.html')
+# while True:
+#     time_now = time.strftime("%S", time.localtime())  # 刷新
+#     if time_now == '55':  # 此处设置每天定时的时间
+#         # 此处3行替换为需要执行的动作
+#         print("hello")
+#         subject = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + " 定时发送测试"
+#         print(subject)
+#         time.sleep(2)  # 因为以秒定时，所以暂停2秒，使之不会在1秒内执行多次
 
 
-class Operationlog(APIView):
-    """
-    获取操作日志信息
-    """
-
-    def post(self, request):
-        try:
-            res = get_Operationlog()
-        except Exception as e:
-            res = {'code': 1, 'message': e.__repr__(), 'data': {}}
-        return HttpResponse(json.dumps(res), content_type="application/json")
-
-
-class Login(APIView):
-    """
-    用户登录
-    """
-    authentication_classes = []  # 此页面不需要认证，取消掉全局认证
-
-    def post(self, request):
-        username = request.data.get("username", None)
-        password = request.data.get("password", None)
-        res = login(username, password)
-        write_log(username, '登陆')
-        return JsonResponse(res, safe=False)
-
-
-# class PaymentRecord(APIView):
-#     """
-#     获取转账记录
-#     """
-#
-#     def post(self, request):
-#         try:
-#             start_time = request.data.get('start_time', None)
-#             end_time = request.data.get('end_time', None)
-#             method = request.data.get('type', None)
-#             # status_type = request.data.get('status_type', None)
-#             res = get_record(start_time, end_time, method)
-#         except Exception as e:
-#             res = {'code': 1, 'message': e.__repr__(), 'data': []}
-#         return JsonResponse(res)
-
-
-"""
-    导出表格函数
-
-
-def download_excel(request):
-    try:
-        time.sleep(10)
-        file_dir = 'C:\\Users\\Administrator\\Desktop\\record_joined_file\\joined_file.xls'
-        file = open(file_dir, 'rb')
-        # file = open('payment_all.xls', 'rb')
-        response = FileResponse(file)
-        response['Content-Type'] = 'application/octet-stream'
-        response['Content-Disposition'] = 'attachment;filename=' + datetime.datetime.now().strftime(
-            "%Y-%m-%d %H-%M-%S") + '_joined_file.xls'
-
-        return response
-    except Exception as e:
-        traceback.print_exc()
-        return HttpResponse('出错啦！')
-
-"""
-
-
-# def upload_excel(request):
-#     """
-#     接收上传的文件
-#     :param request:
-#     :return:｛'code': 0/1, 'message': error message,'data':{} }
-#     """
-#     res = {'code': 0, 'message': "", 'data': {}}
-#     try:
-#         file = request.FILES.get('payment', None)
-#         f = open('backup/' + file.name, 'wb')
-#         for chunck in file.chunks():
-#             f.write(chunck)
-#         f.close()
-#         return JsonResponse(res)
-#     except Exception as e:
-#         res['code'] = 1
-#         res['message'] = '文件上传失败!' + e.__repr__()
-#         return JsonResponse(res)
-
-
+# 测试
 def test(request):
-    # (6.18, '15991697544', '返利到账', '吴红芳', '18')
-    res = models.WebsiteTranRecord.objects.filter(status=0).all().values("money", "zfb_number", "name", "device")
-    need_que = []
-    for i in res:
-        a = i.values()
-        need_que.append(tuple(a))
-    print(need_que)
-    models.WebsiteTranRecord.objects.filter(id=2).update(status=0)
-    return HttpResponse("执行成功")
+    print(request.body)
 
 
-# class payment(APIView):
-#     def post(self, request):
-#         data = {}
-#         res = {'code': 0, 'message': "", 'data': data}
-#         # 查询数据库中的余额
-#         balance = models.Balance_Information.objects.order_by("-id").values('balance').first()['balance']
-#         print(balance)
-#         # 实例化转账工具类并赋值给pay这个变量
-#         pay = Pay()
-#         # 记录成功转账的总钱数与次数
-#         record_for_payment = 0.0
-#         count_for_succ = 0
-#
-#         # 失败的总钱数与次数
-#         record_for_unsucc = 0.0
-#         count_for_unsucc = 0
-#
-#         # (6.18, '15991697544', '返利到账', '吴红芳', '18')
-#         need_pay_queue = []
-#
-#         # models.WebsiteTranRecord.objects.all().values("money", "zfb_number", "")
-#         ## 取出数据库中所有待体现的记录到一个元组,
-#         temp_ob = models.WebsiteTranRecord.objects.filter(status=0).all().values("money", "zfb_number", "name", "id",
-#                                                                                  "device")
-#         for i in temp_ob:
-#             a = i.values()
-#             need_pay_queue.append(tuple(a))
-#         print(need_pay_queue)  # (23.2, 'dxxv@qdsq.com', '丁海亚', 2,'12号')
-#
-#         # 开始转账
-#         error_update_counter = 0
-#         for item in need_pay_queue:
-#             # item(金额,账号,姓名,id,设备名)
-#             # pay(账号, 金额（int）, id, 姓名, 备注=返利到账)
-#             # (6.18, '15991697544', '返利到账', '吴红芳', '18')
-#             rec = pay.pay(str(item[1]), item[0], item[3], item[2])
-#             rec['remark'] = item[4]
-#             id = rec["id"]
-#             if rec['status'] == '转账成功':
-#                 count_for_succ += 1
-#                 record_for_payment += float(rec['amount'])
-#                 rec['first_pay_status'] = 1
-#                 rec['success_time'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-#                 models.WebsiteTranRecord.objects.filter(id=id).update(status=1, pay_date=rec["pay_date"],
-#                                                                       order_id=rec['order_id'],
-#                                                                       out_biz_no=rec['out_biz_no'])
-#                 print("更新数据库成功")
-#             else:
-#                 rec['first_pay_status'] = 0
-#                 models.WebsiteTranRecord.objects.filter(id=id).update(status=2, remark=rec['status'],
-#                                                                       out_biz_no=rec['out_biz_no'])
-#                 # 记录失败总数与金额
-#                 count_for_unsucc += 1
-#                 record_for_unsucc += float(rec['amount'])
-#         res['message'] = '转账成功,成功为%s名用户转帐操作,' % count_for_succ + '有%s名用户转账失败,请及时到待体现页面处理' % count_for_unsucc
-#
-#         # # 新增余额记录
-#         if record_for_payment > 0:
-#             balance_record = {'account_name': '铁牛5', 'balance': round(balance - record_for_payment, 2),
-#                               'update_time': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-#                               'last_time_balance': round(balance, 2), 'last_cost': round(record_for_payment, 2)}
-#             models.WebsiteBalanceRecord.objects.create(**balance_record)
-#         # 总操作用户
-#         data['count'] = len(temp_ob)
-#         # 转账总金额
-#         data['count_num'] = record_for_payment + record_for_unsucc
-#         # 实际转账金额
-#         data['tran_num'] = record_for_payment
-#         # 成功转账用户
-#         data['count_for_succ'] = count_for_succ
-#
-#         res = {'code': 0, 'message': "", 'data': data}
-#
-#         return JsonResponse(res)
-
-class payment(APIView):
-    def post(self, request):
-        id = request.data.get("uid", None)
-        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
-            'username']
-        data = {}
-        res = {'code': 0, 'message': "", 'data': data}
-        # 查询数据库中的余额
-        balance = models.Balance_Information.objects.order_by("-id").values('balance').first()['balance']
-        print(balance)
-        # 实例化转账工具类并赋值给pay这个变量
-        pay = Pay()
-        # 记录成功转账的总钱数与次数
-        record_for_payment = 0.0
-        count_for_succ = 0
-        # 失败的总钱数与次数
-        record_for_unsucc = 0.0
-        count_for_unsucc = 0
-
-        # (6.18, '15991697544', '返利到账', '吴红芳', '18')
-        need_pay_queue = []
-
-        # models.WebsiteTranRecord.objects.all().values("money", "zfb_number", "")
-        ## 取出数据库中所有待体现的记录到一个元组,
-        temp_ob = models.WebsiteTranRecord.objects.filter(status=0).all().values("money", "zfb_number", "name", "id",
-                                                                                 "device")
-        for i in temp_ob:
-            a = i.values()
-            need_pay_queue.append(tuple(a))
-        print(need_pay_queue)  # (23.2, 'dxxv@qdsq.com', '丁海亚', 2,'12号')
-        # (2.5, '2245966773@qq.com', '陈露中', 2, '12号')
-        if len(need_pay_queue) == 0:
-            res = {'code': 1, 'message': "无人体现", 'data': {}}
-            return JsonResponse(res)
-        # 开始转账
-        error_update_counter = 0
-        for item in need_pay_queue:
-            # item(金额,账号,姓名,id,设备名)
-            # pay(账号, 金额（int）, id, 姓名, 备注=返利到账)
-            # (6.18, '15991697544', '返利到账', '吴红芳', '18')
-            # rec = pay.pay(str(item[1]), item[0], item[3], item[2],'返利到账')
-            rec = pay.pay(item[1], item[0], item[3], item[2], "返利到账")
-            rec['remark'] = item[4]
-            id = rec["id"]
-            if rec['status'] == '转账成功':
-                count_for_succ += 1
-                record_for_payment += float(rec['amount'])
-                # rec['first_pay_status'] = 1
-                # rec['success_time'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                # models.WebsiteTranRecord.objects.filter(id=id).update(status=1, pay_date=rec["pay_date"],order_id=rec['order_id'],out_biz_no=rec['out_biz_no'])
-                models.WebsiteTranRecord.objects.filter(id=id).update(status=1, pay_date=rec["pay_date"],
-                                                                      order_id=rec['order_id'],
-                                                                      out_biz_no=rec['out_biz_no'],
-                                                                      remark=rec["status"])
-                print("转装成功")
-            else:
-                # rec['first_pay_status'] = 0
-                models.WebsiteTranRecord.objects.filter(id=id).update(status=2, remark=rec['status'],
-                                                                      out_biz_no=rec['out_biz_no'])
-                # 记录失败总数与金额
-                count_for_unsucc += 1
-                record_for_unsucc += float(rec['amount'])
-        messgess = '操作成功：成功为%s名用户转帐操作,' % count_for_succ + '有%s名用户转账失败,请及时到待提现页面处理' % count_for_unsucc
-
-        # # 新增余额记录
-
-        if record_for_payment > 0:
-            balance2 = '-' + str(round(item[0], 2))
-            balance_record = {'balance': round(balance - item[0], 2),
-                              'time': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                              'balance_change': balance2, 'status': 1}
-            models.Balance_Information.objects.create(**balance_record)
-        # 总操作用户
-        data['count'] = len(temp_ob)
-        # 转账总金额
-        data['count_num'] = record_for_payment + record_for_unsucc
-        # 实际转账金额
-        data['tran_num'] = record_for_payment
-        # 成功转账用户
-        data['count_for_succ'] = count_for_succ
-
-        res = {'code': 0, 'message': messgess, 'data': data}
-        write_log(worker, "操作了批量转账")
-
-        return JsonResponse(res)
+def regester_user(request):
+    body = json.loads(request.body.decode())
+    username = body['username']
+    password = body['password']
+    role = body['role']
 
 
-# 单次转帐接口
-class Pay_one(APIView):
-    """
-    单次转账接口
-    """
-
-    def post(self, request):
-        id = request.data.get("uid", None)
-        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
-            'username']
-        try:
-            res = pay_one(request)
-            write_log(worker, "操作了单笔转账")
-        except Exception as e:
-            res = {'code': 1, 'message': e.__repr__(), 'data': []}
-        return JsonResponse(res)
 
 
-# 下载Excel
-# def get_excel(request):
-#     """
-#     调用下载器获取需要转账的表，
-#     :param request:
-#     :param operator 操作人
-#     :param uid 用户id
-#     :return: {'code': 0/1, 'message': error message, 'data': download message}
-#     """
-#     user_info = json.loads(request.body.decode())
-#     uid = int(user_info["uid"])
-#     # 取出操作人
-#     operator = models.WebsiteUserinfo.objects.filter(uid=uid).values('username').first()['username']
-#     print(operator)
-#     res = {'code': 0, 'message': "执行成功"}
-#     try:
-#         # delete old file
-#         new_path = r'C:\\Users\\Administrator\\Desktop\\backup_data\\'
-#         file_dir = r'C:\\Users\\Administrator\\Desktop\\record_joined_file\\joined_file.xls'
-#         os.remove(file_dir)
-#     except:
-#         pass
-#     download = Haproxy()  # 实例化下载器类
-#     t = threading.Thread(target=download.run)  # 开启线程调用run函数，下载Excel表格
-#     t.start()
-#     file_path = r'C:\\Users\\Administrator\\Desktop\\record_joined_file\\joined_file.xls'
-#     # 读取转帐表，写入数据库
-#     try:
-#         res = read_excel(file_path)
-#         # [16.32, 'isabel98@163.com', '返利到账', '崔丹', '109']
-#         row = 0
-#         for i in res:
-#             money = i[0]
-#             zfb_number = i[1]
-#             device = i[-1]
-#             status = 0
-#             name = i[-2]
-#             models.WebsiteTranRecord.objects.create(money=money, name=name, zfb_number=zfb_number, device=device,
-#                                                     status=status, operator=operator)
-#             row += 1
-#         now_time = time.strftime("%Y-%m-%d__%H:%M:%S", time.localtime()) + "写入数据库" + ".xls"
-#         ## 引包 import shutil
-#         shutil.move(file_dir, new_path + now_time)
-#     except Exception as e:
-#         data = e.__repr__()
-#         res["code"] = 1
-#         res["message"] = data
-#         return JsonResponse(res)
-#     res["message"] = "成功写入了%s条待体现数据" % row
-#     return JsonResponse(res)
+    return HttpResponse('sad')
 
-
-class Manager_review(APIView):
-    """
-    用户管理
-    查看用户信息
-    """
-
-    def post(self, request):
-        id = request.data.get("uid", None)
-        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
-            'username']
-        try:
-            res = get_all_user()
-            write_log(worker, "查看了用户管理信息")
-        except Exception as e:
-            res = {'code': 1, 'message': e.__repr__(), 'data': []}
-        return JsonResponse(res)
-
-
-class Update_person_info(APIView):
-    """
-    修改某个人的信息及权限
-    """
-
-    def post(self, request):
-        id = request.data.get("uid", None)
-        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
-            'username']
-        try:
-            raw_auth = []
-            raw_id = request.data.get('id', None)
-            raw_username = request.data.get('username', None)
-            raw_password = request.data.get('password', None)
-            real_name = request.data.get('real_name', None)
-            role = request.data.get('role', None)
-            for power, values in request.data.get('power', None).items():
-                if values:
-                    raw_auth.append(models.WebsiteAuth.objects.filter(url=power).values('id').first()['id'])
-
-            update_result = API().update_user(raw_id, raw_username, raw_password, raw_auth, real_name, role)
-            if update_result:
-                res = {'code': 0, 'message': raw_username + '的信息更新成功', 'data': []}
-                write_log(worker, "修改了" + raw_username + "的信息及权限")
-            else:
-                res = {'code': 1, 'message': raw_username + '的信息更新失败', 'data': []}
-        except Exception as e:
-            res = {'code': 1, 'message': e.__repr__(), 'data': []}
-        return JsonResponse(res)
-
-
-class Remove_user(APIView):
-    """
-    删除用户
-    """
-
-    def post(self, request):
-        try:
-            id = request.data.get("uid", None)
-            worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
-                'username']
-            raw_id = request.data.get('id', None)
-            user_name = models.WebsiteUserinfo.objects.filter(id=raw_id).values('username').first()[
-                'username']
-            remove_result = API().remove_user(raw_id)
-            if remove_result:
-                res = {'code': 0, 'message': user_name + '的信息删除成功', 'data': []}
-                write_log(worker, "删除了用户" + user_name)
-            else:
-                res = {'code': 1, 'message': user_name + '的信息删除失败', 'data': []}
-        except Exception as e:
-            res = {'code': 1, 'message': e.__repr__(), 'data': []}
-        return JsonResponse(res)
-
-
-class Manager_user_auth(APIView):
-    """
-    新增用户
-    """
-
-    def post(self, request):
-        id = request.data.get("uid", None)
-        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
-            'username']
-        try:
-            all_auth = API().get_auth_info()
-            new_auth_list = []
-            new_name = request.data.get('username', None)  # 新建用户用户名
-            new_password = request.data.get('password', None)  # 新建用户密码
-            real_name = request.data.get('real_name', None)  # 新建用户姓名
-            role = request.data.get('role', None)  # 用户类型
-            power = request.data.get('power', None)  # 用户权限
-            for key, value in power.items():
-                if value:
-                    # 把用户全新更新到权限表中
-                    new_auth_list.append(models.WebsiteAuth.objects.filter(url=key).values('id').first()['id'])
-            # 判断用户是否存在
-            current_user_list = API().get_all_user_name()
-            if new_name not in current_user_list:
-                # new user auth
-                API().add_user(new_name, new_password, new_auth_list, real_name, role)
-                res = {'code': 0, 'message': "添加成功", 'data': []}
-                write_log(worker, "添加了新用户" + new_name)
-            else:
-                # change user auth
-                res = {'code': 1, 'message': "已存在此用户", 'data': []}
-        except Exception as e:
-            res = {'code': 1, 'message': e.__repr__(), 'data': []}
-        return JsonResponse(res)
-
-
-def change_password(request):
-    """
-        修改密码
-        接收: {token,uid,password:新密码}
-        返回 : 默认
-        """
-    res = {'code': 0, 'message': "", 'data': []}
-    user_id = eval(request.body).get('uid', None)
-    worker = models.WebsiteUserinfo.objects.filter(id=user_id).values('username').first()['username']
-    try:
-        new_password = eval(request.body).get('password', None)
-        models.WebsiteUserinfo.objects.filter(id=user_id).update(password=new_password)
-        write_log(worker, '修改了密码')
-        res['message'] = '密码修改成功'
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = '密码修改失败!' + e.__repr__()
-    return JsonResponse(res)
-
-
-def get_userinfo(request):
-    """
-        获取当前登录用户的信息
-        接收: {token,uid}
-        返回 : 默认
-        """
-    res = {'code': 0, 'message': "", 'data': {}}
-    user_id = eval(request.body).get('uid', None)
-    try:
-        user = models.WebsiteUserinfo.objects.filter(id=user_id).first()
-        role_dict = {"1": "管理员", "2": "普通"}
-        user_info = {'name': user.name,
-                     'role': role_dict[user.role],
-                     'password': user.password,
-                     'username': user.username,
-                     }
-        res['data'].update(user_info)
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = e.__repr__()
-    return JsonResponse(res)
-
-
-# def download_log(request):
-#     """
-#     记录下载log
-#             接收: {token , uid , reserve_id ,}
-#         返回: {code , message ,
-#         data:[
-#             {}
-#         ]
-#     """
-#     res = {'code': 0, 'message': "", 'data': []}
-#     request_boby_dict = eval(request.body)
-#     worker = models.WebsiteUserinfo.objects.filter(id=request_boby_dict['uid']).values('username').first()['username']
-#     try:
-#         request_boby_dict['user_name'] = worker
-#         if 'start_time' not in request_boby_dict.keys():
-#             request_boby_dict['start_time'] = datetime.datetime.now().strftime('%Y-%m-%d')
-#         if 'end_time' not in request_boby_dict.keys():
-#             request_boby_dict['end_time'] = datetime.datetime.now().strftime('%Y-%m-%d')
-#         if 'type' not in request_boby_dict.keys():
-#             request_boby_dict['type'] = 'payment_all'
-#         request_boby_dict.pop('token')
-#         models.WebsiteDownloadLog.objects.create(**request_boby_dict)
-#
-#         res['message'] = '下载表格记录成功'
-#     except Exception as e:
-#         res['code'] = 1
-#         res['message'] = '下载表格记录失败!' + e.__repr__()
-#     return JsonResponse(res)
-
-
-def update_pay_ses(request):
-    """
-    增加一个保存支付宝信息的接口
-    :param request:
-    :return:
-    """
-    request_boby_dict = eval(request.body)
-    worker = models.WebsiteUserinfo.objects.filter(id=request_boby_dict['uid']).values('username').first()['username']
-    print(request.body.decode())
-    dic_body = request.body.decode()
-    dic_body = json.loads(dic_body)
-    # print(json.loads(request.body))
-    public = dic_body.get('pub')
-    private = dic_body.get('prv')
-    appid = dic_body.get('appid')
-    # print(public,private,appid)
-    print(type(appid), type(public), type(private))
-    res = write_pay_key(public, private, appid)
-    if res == '写入成功':
-        write_log(worker, '修改支付宝信息')
-        return HttpResponse('支付宝商户信息保存成功')
-    else:
-        return HttpResponse(res)
-
-
-def Read_pay_key(request):
-    """
-    获取支付宝接口信息
-    :param request:
-    :return:
-    """
-    request_boby_dict = eval(request.body)
-    worker = models.WebsiteUserinfo.objects.filter(id=request_boby_dict['uid']).values('username').first()['username']
-    if request.method == "POST":
-        res = read_pay_key()
-        write_log(worker, '获取支付宝信息')
-        return JsonResponse(res)
-    else:
-        return HttpResponse('请求失败')
-
-
-class Get_tran_monery(APIView):
-    """
-    主页获取金额信息
-    """
-
-    def post(self, request):
-        try:
-            res = get_tran_monery(request)
-        except Exception as e:
-            res = {'code': 1, 'message': e.__repr__(), 'data': []}
-        return JsonResponse(res)
-
-
-def get_device_information(request):
-    """
-    检测设备信息
-    :param request:
-    :return: {'code': 0, 'message': '', 设备总数量/'count': 0, 正常运行设备数量/'count1': 0, 异常设备数量/'count2': 0, 'data': [设备相关信息]}
-    """
-    res = {'code': 0, 'message': '', 'count': 0, 'count1': 0, 'count2': 0, 'data': []}
-    try:
-        info = models.Device_Information.objects.all()
-        b = models.Device_Information.objects.filter(
-            Q(software_status=0) & Q(wechat_status=0)).all()
-        count = 0
-        count1 = 0
-        for i in info:
-            count += 1
-            res['data'].append({"id": i.id, "server": i.server, "device": i.device,
-                                "software_account": i.software_account,
-                                "wechat_id": i.wechat_id,
-                                "software_status": i.software_status,
-                                "wechat_status": i.wechat_status,
-                                "test_time": i.test_time,
-                                "remarks_information": i.remarks_information})
-        res["count"] = count
-        for _ in b:
-            count1 += 1
-        res["count1"] = count1
-        res["count2"] = count - count1
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = e.__repr__()
-    return JsonResponse(res)
-
-
-def write_device_information(request):
-    """
-    写入检测设备信息
-    :param request:
-    :return:
-    """
-    request = request.body.decode()
-    request = json.loads(request)
-    robot_total = request['robot_total']
-    we_total = request['we_total']
-    time = request["test_time"]
-    # 软件账号是个字典
-    software_account = request['software_account']
-    server_ip = request['serverIP']
-    print(robot_total, we_total, software_account, server_ip, time)
-    info = models.Device_Information.objects.filter(server=server_ip)
-    for i in info:
-        if i.software_account in software_account and robot_total == 2 and we_total == 2:
-            i.software_status = 0
-            i.wechat_status = 0
-            i.test_time = time
-            i.save()
+# 登陆校验（明文账号 -- 加密后的密码传输）
+def login(request):
+    res = {'status':1,'message':'登陆成功'}
+    body = json.loads(request.body.decode())
+    user_name = body['user_name']
+    print(body)
+    result = models.Userinfo.objects.filter(user=user_name).values('user','passwd').first()
+    if result == None:
+        result = ''
+    if len(result):
+        if result['user'] == body['user_name'] and result['passwd'] == body['password']:
+            res['message'] = '登陆成功'
         else:
-            i.software_status = 1
-            i.wechat_status = 1
-            i.test_time = time
-            i.save()
-    return HttpResponse('写入成功')
-
-
-# 这是检测设备的接口,首先获取IP列表，传入IP列表并使用远程调用函数批量执行服务器脚本，sshd的参数都是固定的，
-def run_device_state(request):
-    host_list = []
-    res = {'code': 0, 'message': ""}
-    try:
-        result = models.Device_Information.objects.values('server').distinct().order_by('server')
-        print(result)
-        for i in result:
-            ip = i["server"]
-            host_list.append(ip)
-        print(host_list)
-        yuan = Yuan(host_list)
-        t = threading.Thread(target=yuan.run)  # 开启调用执行远程函数
-        t.start()
-        res["message"] = '检测成功'
-    except Exception as e:
-        res = {'code': 1, 'message': e.__repr__()}
+            res['message'] = '密码错误'
+            res['status'] = 0
+    else:
+        res['message'] = '账号不存在哦'
+        res['status'] = 0
     return JsonResponse(res)
 
 
-class Get_tran_record(APIView):
+def write_tran_record(request):
     """
-    今日提现信息
+    接收远程服务器中的提现信息
+    :param request: {number:提现信息数量, device:设备号,data:[[金额,支付宝,姓名],[金额,支付宝,姓名]]}
+    :return: 返回1 表示接收并写入成功, 返回0 表示接收或写入失败
     """
-
-    def post(self, request):
-        id = request.data.get("uid", None)
-        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
-            'username']
-        try:
-            res = get_tran_record(request)
-            write_log(worker, '查看今日提现信息')
-        except Exception as e:
-            res = {'code': 1, 'message': e.__repr__(), 'data': []}
-        return JsonResponse(res)
-
-
-class Get_tran_record1(APIView):
-    """
-    获取转账信息接口
-    """
-
-    def post(self, request):
-        id = request.data.get("uid", None)
-        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
-            'username']
-        try:
-            start_time = request.data.get('start_time', None)
-            end_time = request.data.get('end_time', None)
-            method = request.data.get('type', None)
-            res = get_tran_record1(start_time, end_time, method)
-            write_log(worker, "查看了转账信息")
-        except Exception as e:
-            res = {'code': 1, 'message': e.__repr__(), 'data': []}
-        return JsonResponse(res)
-
-
-class Get_tran_record2(APIView):
-    """
-    获取待处理提现信息
-    """
-
-    def post(self, request):
-        id = request.data.get("uid", None)
-        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
-            'username']
-        try:
-            res = get_tran_record2(request)
-            write_log(worker, '查看了待处理提现信息')
-        except Exception as e:
-            res = {'code': 1, 'message': e.__repr__(), 'data': []}
-        return JsonResponse(res)
-
-
-class Get_tran_record3(APIView):
-    """
-    通过金额, 姓名, 账号过滤转账记录信息
-    """
-
-    def post(self, request):
-        try:
-            type = request.data.get('type', None)
-            monery = request.data.get('monery', None)
-            name = request.data.get('name', None)
-            zfb = request.data.get('zfb', None)
-            res = get_tran_record3(type, monery, name, zfb)
-        except Exception as e:
-            res = {'code': 1, 'message': e.__repr__(), 'data': []}
-        return JsonResponse(res)
-
-
-class Updata_tran_record(APIView):
-    """
-    修改待处理提现信息
-    """
-
-    def post(self, request):
-        id = request.data.get("uid", None)
-        worker = models.WebsiteUserinfo.objects.filter(id=id).values('username').first()[
-            'username']
-        try:
-            result = updata_tran_record(request)
-            res = {'code': 0, 'message': result}
-            write_log(worker, '修改了待提现信息')
-        except Exception as e:
-            res = {'code': 1, 'message': e.__repr__()}
-        return JsonResponse(res)
-
-
-def balance_deposit(request):
-    """
-    存钱余额
-    :param request:
-    :return:｛'code': 0/1, 'message': error message,'data':{} }
-    """
-    res = {'code': 0, 'message': "", 'data': {}}
-    request_boby_dict = eval(request.body)
-    worker = models.WebsiteUserinfo.objects.filter(id=request_boby_dict['uid']).values('username').first()['username']
+    print('铁牛时代转账系统开始接收处理数据')
     try:
-        deposit = float(eval(request.body).get('deposit', None))
-        balance = models.Balance_Information.objects.order_by("-id").values('balance').first()['balance']
-        balance_record = {'balance': round(balance + deposit, 2),
-                          'time': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                          "balance_change": "+" + str(deposit)}
-        models.Balance_Information.objects.create(**balance_record)
-        res['message'] = '存款成功' + "+" + str(deposit)
-        write_log(worker, '存入余额' + str(deposit) + "元")
+        request_boby_dict = eval(request.body)
+        number = request_boby_dict["number"]
+        device = request_boby_dict["device"]
+        data1 = request_boby_dict["data"]
+        n = 0
+        status = 0
+        mch_id = settings.WEINXIN_PAY_MCH_ID
+        mch_billno = create_mch_billno(mch_id)
+        if device == '099':
+            device = 99
+        if device == "祖师":
+            device = 888
+        if device == "祖母":
+            device = 999
+        for i in data1:
+            models.TransferRecord.objects.create(name=i[2], re_openid=i[1], mch_billno=mch_billno,
+                                                 device=device, total_amount=i[0], status=status)
+            n += 1
+        print(str(device) + "推送提现数据" + str(number) + "条")
+        print("接收到" + str(device) + "提现数据" + str(n) + "条")
+        res = 0
     except Exception as e:
-        res['code'] = 1
-        res['message'] = '存款失败!' + e.__repr__()
-    return JsonResponse(res)
+        print(e.__repr__())
+        res = 1
+    return HttpResponse(res)
 
 
-def balance_preview(request):
-    """
-    查看余额
-    :param request:
-    :return:｛'code': 0/1, 'message': error message,'data':{} }
-    """
-    res = {'code': 0, 'message': "", 'data': {}}
-    try:
-        balance = models.Balance_Information.objects.values('balance').order_by('-id').first()['balance']
-        res['data'] = balance
-    except Exception as e:
-        res['code'] = 1
-        res['message'] = '余额查看失败!' + e.__repr__()
-    return JsonResponse(res)
+def weixin_mainbak(request):
+    if request.method == "GET":
+        #接收微信服务器get请求发过来的参数
+        signature = request.GET.get('signature', None)
+        timestamp = request.GET.get('timestamp', None)
+        nonce = request.GET.get('nonce', None)
+        echostr = request.GET.get('echostr', None)
+        print(signature,timestamp,echostr)
+	    #服务器配置中的token
+        token = '5HSw9hIXyRzygnK1xyNlSg'
+        #把参数放到list中排序后合成一个字符串，再用sha1加密得到新的字符串与微信发来的signature对比，如果相同就返回echostr给服务器，校验通过
+        hashlist = [token, timestamp, nonce]
+        hashlist.sort()
+        hashstr = ''.join([s for s in hashlist])
+        hashstr = hashstr.encode('utf-8')
+        hashstr = hashlib.sha1(hashstr).hexdigest()
+        if hashstr == signature:
+          return HttpResponse(echostr)
+        else:
+          return HttpResponse("field")
+    else:
+        othercontent = autoreply(request)
+        return HttpResponse(othercontent)
+
+def get_accesstoken(request):
+    url  = 'https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=wx71ccb0df8485c76a&secret=c84fa46393b54cf7e09d10fe7b2179d4'
+    responce = requests.GET(url=url).text
+    print(type(responce))
+    print(json.loads(responce))
+    return HttpResponse('nihao')
+
+def weixin_main(request):
+    str1 = """
+    终于等到你！！！
+快快添加咱们的机器宝宝吧~
+查询优惠福利，更有免单派送哦！
+扫码添加！马上领取！"""
+
+    jieguo =  request.body
+    data = ElementTree.XML(request.body.decode('utf-8'))
+    open_id = data.find('FromUserName').text  # 用户open_id
+    wxg_id = data.find('ToUserName').text  # 开发者微信号
+    MsgType = data.find('MsgType').text
+    if not MsgType == 'event':
+        return HttpResponse()
+    event = data.find('Event').text
+    print('答题',event)
+    print(open_id, wxg_id)
+    print(type(open_id))
+    ACCESS_TOKEN = models.Token.objects.filter(id=1).values('token')[0]['token']
+    print('asdsadasd',ACCESS_TOKEN)
+    if not event == 'subscribe':
+        return HttpResponse('')
+    heihei2(open_id,ACCESS_TOKEN)
+    heihei(open_id,ACCESS_TOKEN)
+
+    #replyMsg = replyasd.TextMsg(open_id, wxg_id, str1)
+    return HttpResponse()
+
+
+def heihei(touser, ACCESS_TOKEN):
+    url = 'https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=' + ACCESS_TOKEN
+    print(123)
+    record = int(models.Record.objects.filter(id=1).values('record')[0]['record'])
+    image_id = models.TuPian.objects.filter(id=record).values('image_id')[0]['image_id']
+    threshold = models.TuPian.objects.filter(id=record).values('threshold')[0]['threshold']
+    thresholds = models.TuPian.objects.filter(id=record).values('thresholds')[0]['thresholds']
+    if record == 20 and threshold == 5:
+        models.TuPian.objects.filter(id=record).update(threshold=1)
+        models.Record.objects.filter(id=1).update(record=1)
+        models.TuPian.objects.filter(id=record).update(thresholds=thresholds + 1)
+    elif record <= 20 and threshold < 5:
+        models.TuPian.objects.filter(id=record).update(threshold=threshold + 1)
+        models.TuPian.objects.filter(id=record).update(thresholds=thresholds + 1)
+    else:
+        models.Record.objects.filter(id=1).update(record=record + 1)
+        models.TuPian.objects.filter(id=record).update(threshold=1)
+        models.TuPian.objects.filter(id=record).update(thresholds=thresholds + 1)
+
+    data = {
+        "touser": touser,
+        "msgtype": "image",
+        "image":
+            {
+                "media_id": image_id
+            }
+    }
+    data = json.dumps(data)
+    response = requests.post(url, data=data)
+    return response
+
+
+def heihei2(touser,ACCESS_TOKEN):
+    url = 'https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=' + ACCESS_TOKEN
+    print(123)
+    str1 = """终于等到你！！！
+快快添加咱们的机器宝宝吧~
+查询优惠福利，更有免单派送哦！
+扫码添加！马上领取！"""
+    data = {
+        "touser": touser,
+        "msgtype": "text",
+        "text":
+            {
+                "content": str1
+            }
+    }
+    #data = json.dumps(data)
+    headers = {"Content-type": "application/json", "charset": "UTF-8"}
+    r = requests.post(url=url, headers=headers,
+                          data=bytes(json.dumps(data, ensure_ascii=False), encoding='utf-8'))
+
+    return r.json()
+
+

@@ -43,8 +43,9 @@ class Payment(object):
         :return:
         '''
         out_biz_no = datetime.now().strftime("%Y%m%d%H%M%S") + str(random.randint(1000, 9999))
+        UN_PID = str(random.randint(10, 99)) + datetime.now().strftime("%Y%m%d%H%M%S") + str(random.randint(10, 99))
         data = {'payee_account': None, 'amount': None, 'payee_real_name': None, 'remark': None, 'order_id': None,
-                'out_biz_no': None, 'pay_date': None, 'status': None, "id":id}
+                'out_biz_no': None, 'pay_date': None, 'status': None, "id":id,'un_pid':UN_PID}
         try:
             # 使用封装好的方法去执行转账操作，并将返回值赋值给result这个变量
             result = self.alipay_each.api_alipay_fund_trans_toaccount_transfer(
@@ -80,6 +81,7 @@ class Payment(object):
                 data['out_biz_no'] = result['out_biz_no']
                 data['pay_date'] = result['pay_date']
                 data['status'] = '转账成功'
+                print(payee_account, amount,"转账成功")
                 return data
             # 转账失败
             # result={'code': '40004', 'msg': 'Business Failed', 'sub_code': 'PAYEE_USER_INFO_ERROR', 'sub_msg': '支付宝账号和姓名不匹配，请确认姓名是否正确', 'out_biz_no': '20180802150835'}

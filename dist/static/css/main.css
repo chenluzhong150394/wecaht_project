@@ -10,8 +10,10 @@ body,
     width: 100%;
     height: 100%;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
 }
-
 body {
     font-family: 'PingFang SC', "Helvetica Neue", Helvetica, "microsoft yahei", arial, STHeiTi, sans-serif;
 }
@@ -19,23 +21,44 @@ body {
 a {
     text-decoration: none
 }
-
-.content-box {
-    position: absolute;
-    left: 160px;
-    right: 0;
-    top: 70px;
-    bottom: 0;
-    /*overflow-y: scroll;*/
+body .changeDev{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 99;
+}
+.mainContent{
+    flex: 1;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    /*position: relative;*/
+}
+#content-box {
+    /*position: absolute;*/
+    /*width: 100%;*/
+    /*left: 180px;*/
+    /*right: 0;*/
+    /*top: 0px;*/
+    /*bottom: 0;*/
+    flex: 1;
+    overflow: scroll;
     -webkit-transition: left .3s ease-in-out;
     transition: left .3s ease-in-out;
-    background: #f0f0f0;
+    background: #ffffff;
+    padding: 10px;
 }
 
 .content {
-    width: auto;
-    padding: 15px;
+    /*width: 100%;*/
     height: 100%;
+    border:1px solid #96C2F1;
+    background-color:#ffffff;
+    border-radius: 10px;
+    overflow: auto;
+    /*overflow-x: auto;*/
 }
 
 .content-collapse {
@@ -168,29 +191,17 @@ a {
 .v-note-wrapper .v-note-panel {
     min-height: 500px;
 }
-
-.position {
-    height: 24px;
-    font-size: 14px;
-    color: #8f8f8f;
-    border-bottom: 1px solid #8f8f8f;
-    margin-bottom: 16px;
-}
-.position i{
-    margin-right: 4px;
-}
 .my_wap{
-    min-width: 1300px;
-    height: 100%;
     overflow: auto !important;
     background-color: #ffffff;
-    padding: 20px;
-    border-radius:20px;
 }
 .my_tag:hover{
     cursor: pointer;
 }
-
+.my_messagebox{
+    width: 800px !important;
+    height: 660px !important;
+}
 /*table{*/
     /*border-collapse: collapse;*/
 /*}*/
@@ -198,3 +209,10 @@ a {
     /*border: 1px solid #dedede;*/
     /*white-space:nowrap;*/
 /*}*/
+.el-tooltip__popper{
+    max-width: 600px !important;
+    height: auto !important;
+    word-wrap:break-word !important;
+    font-size: 16px;
+    line-height: 32px;
+}

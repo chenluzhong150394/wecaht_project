@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 """
 
 import os
+import datetime
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -56,7 +58,7 @@ MIDDLEWARE = [
 CORS_ALLOW_CREDENTIALS = True
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ORIGIN_WHITELIST = (
-   "*"
+    "*"
 )
 
 CORS_ALLOW_METHODS = (
@@ -103,26 +105,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'OA.wsgi.application'
 
-# Database
-# https://docs.djangoproject.com/en/2.0/ref/settings/#databases
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'oa',
-#         'USER': 'tenew',
-#         'PASSWORD': 'Azslc123456',
-#         'HOST': 'tenewmysql.asuscomm.com',
-#         'PORT': '3306',
-#     }
-# }
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'oa',
-        'USER': 'root',
-        'PASSWORD': '123456',
-        'HOST': '127.0.0.1',
+        'NAME': 'clz',
+        'USER': 'clz',
+        'PASSWORD':'oracle',
+        'HOST': '47.98.50.15',
         'PORT': '3306',
     }
 }
@@ -167,9 +156,28 @@ STATICFILES_DIRS = (
     os.path.join(BASE_DIR, "dist/static"),  # 静态文件目录位置
 )
 
-
 # rest_framework全局权限认证类
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ["website.utils.auth.Authtication"]
+    "DEFAULT_AUTHENTICATION_CLASSES": 'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
+}
+
+# jwt载荷中的有效期设置
+JWT_AUTH = {
+    #token 有效期
+    'JWT_EXPIRATION_DELTA': datetime.timedelta(hours=8),
+    'JWT_ALLOW_REFRESH': True,
+     #续期有效期（该设置可在24小时内带未失效的token 进行续期）
+    'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(hours=24),
+    # 自定义返回格式，需要手工创建
+    'JWT_RESPONSE_PAYLOAD_HANDLER': 'website.utils.jwt_res.jwt_response_payload_handler',
 }
 WEBSOCKET_ACCEPT_ALL = True
+
+# 微信相关证书
+WEINXIN_PAY_MCH_ID = "1563855281"  # 商户号
+WEIXIN_APP_ID = "wx8e9080d2032af7fe"  # 公众号APP_ID
+WEIXIN_PAY_CERT_PATH = 'website/cert/apiclient_cert.pem'  # 证书pem格式
+WEIXIN_PAY_CERT_KEY_PATH = 'website/cert/apiclient_key.pem'  # 证书秘钥pem格式
+WEIXIN_PAY_P12_CERT_PATH = 'website/cert/apiclient_cert.p12'  # PKCS12格式证书
+WEIXIN_PAY_CA_CERT_PATH = ''  # CA证书 已经在18年停用
+WEIXIN_PAY_API_KEY = 'SmH9cXJKZyk2z8EmsBf84mu5q39gdrzl'  # 微信商户平台api安全中设置的安全码

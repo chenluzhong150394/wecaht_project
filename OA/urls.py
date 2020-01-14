@@ -23,9 +23,9 @@ from django.contrib.staticfiles.views import serve
 urlpatterns = [
     # url(r'^admin/', admin.site.urls),
     # url('favicon.ico', serve, {'path': '/static/img/favicon.ico'}),
-    url(r'^$', views.init),
+    # url(r'^$', views.init),
     # url(r'^templates/favicon.ico$', RedirectView.as_view(url='/templates/favicon.ico')),
     # url(r'^', include('website.urls')),
-    url(r'^oa/', include('website.urls')),
+    url(r'^admin/', include('website.urls')),
     # url('',TemplateView.as_view(template_name="index.html"),name="index"),
 ]

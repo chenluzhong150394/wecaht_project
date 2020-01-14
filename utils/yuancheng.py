@@ -19,6 +19,8 @@ class Yuan():
         #     '49.235.101.231',  # 151/152号
         # ]
         self.host_list = host_list
+        print(host_list)
+        print(type(host_list))
         # self.host_dict = {
         #     '49.235.101.231': ('151号/152号', 77),
         # }
@@ -39,6 +41,7 @@ class Yuan():
     def run(self):
         host_nums = len(self.host_list)
         ssh_pool = Pool(host_nums)
+        print('开启进程')
         for host in self.host_list:
             temp = ssh_pool.apply_async(self.working, args=(host,), callback=self.callback_update)
         ssh_pool.close()
@@ -81,14 +84,7 @@ class Yuan():
         stdin, stdout, stderr = ssh.exec_command(cmd[0])
         # 记录输出
         exec_result = stdout.read().decode('gbk')
-        log_file_name = time.strftime('%Y{y}%m{m}%d{d}', time.localtime()).format(y='年', m='月', d='日')
-        flog = open(r"C:\\Users\\Administrator\\Desktop\\log\\" + log_file_name + "_log.txt", 'a')
-        now_time = time.strftime('%Y{y}%m{m}%d{d} %H{h}%M{f}%S{s}\n', time.localtime()).format(y='年', m='月', d='日',
-                                                                                               h='时', f='分', s='秒')
-        # machine = self.host_dict[host][0]
-        flog.write("**********************\n" + host + "\n" + now_time)
-        flog.write(exec_result)
-        flog.close()
+        print(exec_result)
 
         return self.update_status_dict(host, exec_result)
 

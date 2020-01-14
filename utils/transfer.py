@@ -12,12 +12,16 @@ from multiprocessing import Pool
 
 
 class Haproxy(object):
-    def __init__(self):
+    def __init__(self,host_dict,host_list):
         ####change
         self.status_dict = {}
         self.status = True
+        self.host_list = host_list
+        self.host_dict = host_dict
+        
+        print(self.host_dict,self.host_list)
        ####change
-        self.host_list = [
+        #self.host_list = [
             # '120.78.211.75',  # 祖师/祖母号
             # '39.108.49.89',  # 1/2号
             # '111.230.180.146',  # 3/4号
@@ -102,7 +106,7 @@ class Haproxy(object):
             # #'139.159.186.168',  # 145/146号
             # #'139.159.184.237',  # 147/148号
             # #'139.159.182.47',  # 149/150号
-            # #'139.159.189.224',  # 151/152号
+            ##'139.159.189.224',  # 151/152号
             # #'139.159.182.204',  # 153/154号
             # #'139.159.177.172',  # 155/156号
             # #update on 2019.08.06
@@ -133,7 +137,7 @@ class Haproxy(object):
             # '139.155.71.132',  #  105/106号
             # # update on 2019.09.05
             # '129.28.81.22',  #  107/108号
-            # '129.28.52.235',  #  109/110号
+            #'129.28.52.235',  #  109/110号
             # '129.28.126.67',  #  111/112号
             # '139.155.102.155',  #113/114号
             # '129.28.140.100',  #  115/116号
@@ -155,11 +159,11 @@ class Haproxy(object):
             # '49.235.100.109',  #  145/146号
             # '49.235.167.13',  #  147/148号
             # '49.235.165.77',  #  149/150号
-            '49.235.101.231',  #151/152号
+            #'49.235.101.231',  #151/152号
             # '49.235.101.173',  #  153/154号
             # '49.235.103.47',  #  155/156号
-        ]
-        self.host_dict = {
+        #]
+        #self.host_dict = {
             # '120.78.211.75': ("祖师号/祖母号", 1),
             # '39.108.49.89': ("1号/2号", 2),
             # '111.230.180.146': ("3号/4号", 3),
@@ -243,7 +247,7 @@ class Haproxy(object):
             # # '139.159.186.168': ('145号/146号', 74),
             # # '139.159.184.237': ('147号/148号', 75),
             # # '139.159.182.47': ('149号/150号', 76),
-            # # '139.159.189.224': ('151号/152号', 77),
+            ##'139.159.189.224': ('151号/152号', 77),
             # # '139.159.182.204': ('153号/154号', 78),
             # # '139.159.177.172': ('155号/156号', 79),
             # # #update on 2019.08.06
@@ -274,7 +278,7 @@ class Haproxy(object):
             # '139.155.71.132': ('105号/106号', 54),
             # # update on 2019.09.06
             # '129.28.81.22': ('107号/108号', 55),
-            # '129.28.52.235': ('109号/110号', 56),
+            #'129.28.52.235': ('109号/110号', 56),
             # '129.28.126.67': ('111号/112号', 57),
             # '139.155.102.155': ('113号/114号', 58),
             # '129.28.140.100': ('115号/116号', 59),
@@ -296,13 +300,13 @@ class Haproxy(object):
             # '49.235.100.109': ('145号/146号', 74),
             # '49.235.167.13': ('147号/148号', 75),
             # '49.235.165.77': ('149号/150号', 76),
-            '49.235.101.231': ('151号/152号', 77),
+            #'49.235.101.231': ('151号/152号', 1),
             # '49.235.101.173': ('153号/154号', 78),
             # '49.235.103.47': ('155号/156号', 79),
 
             
          
-        }
+        #}
         self.port = 22
         self.username = 'tenew'
         self.pwd = 'zslc0000'
@@ -371,18 +375,19 @@ class Haproxy(object):
         # 执行命令
         #cmd = [
         #    'cmd /c "cd C:\\Users\\Administrator\\Desktop\\transfer_to_oa  & enable_close_RDP.bat & transfer_to_oa_v1.4.exe & disable_close_RDP.bat"']
-        cmd = ['cmd /c "cd C:\\Users\\Administrator\\Desktop\\transfer_to_oa  & enable_close_RDP.bat & transfer_to_oa_v2.exe & disable_close_RDP.bat"']
+        cmd = ['cmd /c "cd C:\\Users\\Administrator\\Desktop\\new_transfer  & enable_close_RDP.bat & transfer_to_pay_v1.exe & disable_close_RDP.bat"']
         #cmd = ['cmd /c "cd C:\\Users\\Administrator\\Desktop\\transfer_to_oa  & enable_close_RDP.bat & test_for_click.exe & disable_close_RDP.bat"']
         # cmd = ['cmd /c "cd C:\\Users\\Administrator\\Desktop\\transfer_to_oa & enable_close_RDP.bat & python test.py"']
         stdin, stdout, stderr = ssh.exec_command(cmd[0])
         #time.sleep(5)
         # 记录输出
         exec_result = stdout.read().decode('gbk')
+        print(exec_result)
         log_file_name = time.strftime('%Y{y}%m{m}%d{d}', time.localtime()).format(y='年', m='月', d='日')
         flog = open(r"C:\\Users\\Administrator\\Desktop\\log\\"+log_file_name+"_log.txt", 'a')
         now_time = time.strftime('%Y{y}%m{m}%d{d} %H{h}%M{f}%S{s}\n', time.localtime()).format(y='年', m='月', d='日',
                                                                                                h='时', f='分', s='秒')
-        # now_time = time.strftime("%Y-%m-%d %H-%M-%S\n", time.localtime())
+
         machine = self.host_dict[host][0]
         flog.write("**********************\n" + machine + "\n" + now_time)
         flog.write(exec_result)
@@ -439,8 +444,10 @@ class Haproxy(object):
 
             # 将文件全部放到backup备份
             filelist = os.listdir(path)
+            print(123)
             for temp in filelist:
                 shutil.move(path + temp, new_path + temp)
+            print(321)
 
 #
 # print("文件合并完成")
