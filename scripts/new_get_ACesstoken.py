@@ -8,7 +8,7 @@ def data_conn(token):
     print('开始写入acesstoken')
     # print('wechat' + '@' + '127.0.0.1' + ':' + '3306')
     conn = mysql.connector.connect(
-    host='127.0.0.1',
+    host='47.98.50.15',
     port=3306,
     user='clz',
     password='oracle',
@@ -16,6 +16,7 @@ def data_conn(token):
     database = 'clz',
     )
     cursor = conn.cursor()
+    print(token)
     sql = """ UPDATE clz.website_token SET token = '%s' WHERE id = 1 """ % token
     content = cursor.execute(sql)
     conn.commit()

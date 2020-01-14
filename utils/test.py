@@ -1,12 +1,28 @@
-from utils.payment_interface import Payment
-from utils.read_excel import read_excel
-
-def run():
-    file = read_excel('../files/2018.7.30(1).xls')
-    Pay = Payment()
-    for item in file:
-        print(item)
-        Pay.pay(item[1],item[0],item[3],item[2])
 
 
-run()
+import json
+import requests
+from website import models
+
+
+# 从数据库中获取token函数
+def get_acesstoken():
+    access_token = models.Token.objects.values('token').first()['token']
+    return access_token
+
+
+
+# 通过openid 获取用户的基本信息
+def get_info(openID):
+    token = get_acesstoken()
+    url = 'https://api.weixin.qq.com/cgi-bin/user/info?=ACCESS_TOKEN&=OPENID&='
+    parmes = {
+        'access_token':token,
+        'openid':openID,
+        'lang':'zh_CN'
+    }
+    res = requests.get(url=url,params=parmes).text
+    res_dict = json.loads(res)
+    print(res_dict)
+    return res_dict
+

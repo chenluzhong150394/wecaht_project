@@ -19,6 +19,7 @@ import datetime
 from django.db.models import Q
 import hashlib
 import requests
+from utils import test
 import requests
 from xml.etree import ElementTree
 
@@ -35,9 +36,12 @@ list1 = ['TQUI51nP3YR5J8OZdMCSivqRI5igK15NGvdjUXsODSo', 'TQUI51nP3YR5J8OZdMCSil7
 #         time.sleep(2)  # 因为以秒定时，所以暂停2秒，使之不会在1秒内执行多次
 
 
+from utils.test import *
 # 测试
 def test(request):
-    print(request.body)
+    print(get_info('o3L5YuPtvki2sjXFsqZpek_uLzi8'))
+
+    return HttpResponse('123')
 
 
 def regester_user(request):
@@ -45,13 +49,16 @@ def regester_user(request):
     username = body['username']
     password = body['password']
     role = body['role']
-
-
-
-
     return HttpResponse('sad')
 
-# 登陆校验（明文账号 -- 加密后的密码传输）
+
+
+# 获取所有的关注者openID 并存入数据库中
+def get_all_user(request):
+    pass
+    return HttpResponse('执行成功')
+
+#登陆校验（明文账号 -- 加密后的密码传输）
 def login(request):
     res = {'status':1,'message':'登陆成功'}
     body = json.loads(request.body.decode())
@@ -106,7 +113,7 @@ def write_tran_record(request):
         res = 1
     return HttpResponse(res)
 
-
+# 验证签名函数
 def weixin_mainbak(request):
     if request.method == "GET":
         #接收微信服务器get请求发过来的参数
@@ -128,8 +135,9 @@ def weixin_mainbak(request):
         else:
           return HttpResponse("field")
     else:
-        othercontent = autoreply(request)
-        return HttpResponse(othercontent)
+        pass
+        # othercontent = autoreply(request)
+        # return HttpResponse(othercontent)
 
 def get_accesstoken(request):
     url  = 'https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=wx71ccb0df8485c76a&secret=c84fa46393b54cf7e09d10fe7b2179d4'
@@ -144,7 +152,6 @@ def weixin_main(request):
 快快添加咱们的机器宝宝吧~
 查询优惠福利，更有免单派送哦！
 扫码添加！马上领取！"""
-
     jieguo =  request.body
     data = ElementTree.XML(request.body.decode('utf-8'))
     open_id = data.find('FromUserName').text  # 用户open_id
