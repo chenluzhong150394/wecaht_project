@@ -30,6 +30,7 @@ def get_acesstoken():
     shell = 'curl "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=wx1e15cce8c4e924ef&secret=86bc1fe693a8276f3c3618b84e349bd3"'
     res = os.popen(shell).readlines()
     res = json.loads(res[0])
+    print(res)
     token = res['access_token']
     res = data_conn(token)
 

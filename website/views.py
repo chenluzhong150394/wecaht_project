@@ -39,7 +39,9 @@ list1 = ['TQUI51nP3YR5J8OZdMCSivqRI5igK15NGvdjUXsODSo', 'TQUI51nP3YR5J8OZdMCSil7
 from utils.test import *
 # 测试
 def test(request):
-    print(get_info('o3L5YuPtvki2sjXFsqZpek_uLzi8'))
+    # print(get_info('o3L5YuPtvki2sjXFsqZpek_uLzi8'))
+
+    get_user()
 
     return HttpResponse('123')
 
@@ -55,7 +57,9 @@ def regester_user(request):
 
 # 获取所有的关注者openID 并存入数据库中
 def get_all_user(request):
-    pass
+
+
+    #
     return HttpResponse('执行成功')
 
 #登陆校验（明文账号 -- 加密后的密码传输）
