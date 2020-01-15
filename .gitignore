@@ -1,5 +1,7 @@
 ﻿# Created by .ignore support plugin (hsz.mobi)
 .idea
-#__pycache__
-#OA.__pycache__
-#website.__pycache__
+__pycache__
+OA.__pycache__
+website.__pycache__
+website.migrations.__pycache__
+website.utils.__pycache__
