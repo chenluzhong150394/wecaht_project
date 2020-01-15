@@ -1,8 +1,4 @@
 ﻿import os
-import sqlite3
-import shutil
-import traceback
-import xlrd
 from django.shortcuts import render, HttpResponse, redirect
 from django.http import FileResponse, JsonResponse
 # from django.views import View
@@ -10,18 +6,13 @@ from website import models
 from OA import settings
 from .utils1 import create_mch_billno
 from website.datebase import *
-from utils.transfer import Haproxy
-from datetime import datetime
 from rest_framework.views import APIView
 import json
-import threading
-import datetime
 from django.db.models import Q
 import hashlib
 import requests
-from utils import test
-import requests
 from xml.etree import ElementTree
+from utils.weixinSDK import *
 
 list1 = ['TQUI51nP3YR5J8OZdMCSivqRI5igK15NGvdjUXsODSo', 'TQUI51nP3YR5J8OZdMCSil7bMwLskOLvFP9l4YQLHQ4', 'TQUI51nP3YR5J8OZdMCSijzTkEopkPy_c_uEHNMHR1c', 'TQUI51nP3YR5J8OZdMCSisZ2EA89vq39S7GOaPhj4XI', 'TQUI51nP3YR5J8OZdMCSiqve8pwMeQeMobHhyFro_yc', 'TQUI51nP3YR5J8OZdMCSitAfyaZGWG4NsN2P9ZnL5y4', 'TQUI51nP3YR5J8OZdMCSihKLumbIZZY85ywyDFhgocs', 'TQUI51nP3YR5J8OZdMCSinIrrKVygYMb8ppWP-cQSmQ', 'TQUI51nP3YR5J8OZdMCSil9A9FdaL_Svb8fo6pVa7ck', 'TQUI51nP3YR5J8OZdMCSit5UQtdF3E44lIOxkzk3tt8', 'TQUI51nP3YR5J8OZdMCSivnnQmlIIdjgGt-9XbBrNk0', 'TQUI51nP3YR5J8OZdMCSikJ-2vDdXdwde_RT-Bfpjxw']
 
@@ -36,12 +27,11 @@ list1 = ['TQUI51nP3YR5J8OZdMCSivqRI5igK15NGvdjUXsODSo', 'TQUI51nP3YR5J8OZdMCSil7
 #         time.sleep(2)  # 因为以秒定时，所以暂停2秒，使之不会在1秒内执行多次
 
 
-from utils.test import *
 # 测试
 def test(request):
     # print(get_info('o3L5YuPtvki2sjXFsqZpek_uLzi8'))
 
-    get_user()
+    get_user
 
     return HttpResponse('123')
 
@@ -57,10 +47,17 @@ def regester_user(request):
 
 # 获取所有的关注者openID 并存入数据库中
 def get_all_user(request):
+    res = get_user()
+    print(res)
+    openID_list = res['data']['openID_list']
+    now_time = get_now_tim()
+    for i in openID_list:
+        if not models.user_openID.objects.filter(openID=i).first():
+            # 不存在则创建
+            models.user_openID.objects.create(openID=i,create_time=now_time)
+            print('增加一条openiD')
 
-
-    #
-    return HttpResponse('执行成功')
+    return JsonResponse(res)
 
 #登陆校验（明文账号 -- 加密后的密码传输）
 def login(request):

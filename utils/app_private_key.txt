@@ -1,3 +1,0 @@
------BEGIN PUBLIC KEY-----
-123123
------END PUBLIC KEY-----

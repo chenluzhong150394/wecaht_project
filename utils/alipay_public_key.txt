@@ -1,3 +1,0 @@
------BEGIN PUBLIC KEY-----
-13131231
------END PUBLIC KEY-----

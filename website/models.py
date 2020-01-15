@@ -40,9 +40,12 @@ class envent(models.Model):
         db_table = 'weixin_envent'
 
 class user_openID(models.Model):
-    user = models.CharField(max_length=32, blank=True, null=True)  # 记录ID
-    openID = models.CharField(max_length=128,blank=True,null=True)
-    remark = models.CharField(max_length=128,blank=True,null=True)
+    user = models.CharField(max_length=32, blank=True, null=True)  # 微信名
+    openID = models.CharField(max_length=128,blank=True,null=True)  #openid
+    remark = models.CharField(max_length=128,blank=True,null=True)  # 备注信息
+    create_time = models.CharField(max_length=36,blank=True,null=True)  # 创建时间
+    position = models.CharField(max_length=36,blank=True,null=True) # 地理位置
+    city = models.CharField(max_length=36,blank=True,null=True)     # 国家
     class Mata:
         managed = True
         db_table = 'weixin_userlist'
