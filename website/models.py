@@ -25,6 +25,7 @@ class Userinfo(models.Model):
     real_name = models.CharField(max_length=64,blank=True, null=True)  # 真实姓名
     create_time = models.CharField(max_length=64,blank=True, null=True)  # 用户注册时间
     update_time = models.CharField(max_length=64,blank=True, null=True)  # 最近一次更改时间
+    role = models.IntegerField(null=True, default=0) # 用户的角色 -- 默认0是管理员
 
     class Mata:
         managed = True
@@ -39,13 +40,16 @@ class envent(models.Model):
         managed = True
         db_table = 'weixin_envent'
 
+# 关注者的信息模型
 class user_openID(models.Model):
     user = models.CharField(max_length=32, blank=True, null=True)  # 微信名
     openID = models.CharField(max_length=128,blank=True,null=True)  #openid
     remark = models.CharField(max_length=128,blank=True,null=True)  # 备注信息
-    create_time = models.CharField(max_length=36,blank=True,null=True)  # 创建时间
-    position = models.CharField(max_length=36,blank=True,null=True) # 地理位置
-    city = models.CharField(max_length=36,blank=True,null=True)     # 国家
+    subscribe_time = models.CharField(max_length=36,blank=True,null=True)  # 关注时间
+    position = models.CharField(max_length=36,blank=True,null=True) # 国家
+    city = models.CharField(max_length=36,blank=True,null=True)     # 城市
+    headimgurl = models.CharField(max_length=256,blank=True,null=True)     # 头像地址
+    subscribe = models.IntegerField(default=1)     # 是否关注
     class Mata:
         managed = True
         db_table = 'weixin_userlist'

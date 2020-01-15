@@ -29,9 +29,9 @@ list1 = ['TQUI51nP3YR5J8OZdMCSivqRI5igK15NGvdjUXsODSo', 'TQUI51nP3YR5J8OZdMCSil7
 
 # 测试
 def test(request):
-    # print(get_info('o3L5YuPtvki2sjXFsqZpek_uLzi8'))
+    print(get_info('o3L5YuPtvki2sjXFsqZpek_uLzi8'))
 
-    get_user
+    # get_user
 
     return HttpResponse('123')
 
@@ -57,6 +57,14 @@ def get_all_user(request):
             models.user_openID.objects.create(openID=i,create_time=now_time)
             print('增加一条openiD')
 
+    # 开始将所有的openID 更新一遍
+    for p in openID_list:
+        res = get_info(p)
+        sub_time = time_date(res['subscribe_time'])
+        query_obj = models.user_openID.objects.filter(openID=p).update(user=res['nickname'],city=res['city'],
+                                                                       position=res['country'],headimgurl=res['headimgurl'],
+                                                                       subscribe=res['subscribe'],subscribe_time=sub_time,
+                                                                       remark=res['remark'])
     return JsonResponse(res)
 
 #登陆校验（明文账号 -- 加密后的密码传输）
@@ -80,39 +88,6 @@ def login(request):
     return JsonResponse(res)
 
 
-def write_tran_record(request):
-    """
-    接收远程服务器中的提现信息
-    :param request: {number:提现信息数量, device:设备号,data:[[金额,支付宝,姓名],[金额,支付宝,姓名]]}
-    :return: 返回1 表示接收并写入成功, 返回0 表示接收或写入失败
-    """
-    print('铁牛时代转账系统开始接收处理数据')
-    try:
-        request_boby_dict = eval(request.body)
-        number = request_boby_dict["number"]
-        device = request_boby_dict["device"]
-        data1 = request_boby_dict["data"]
-        n = 0
-        status = 0
-        mch_id = settings.WEINXIN_PAY_MCH_ID
-        mch_billno = create_mch_billno(mch_id)
-        if device == '099':
-            device = 99
-        if device == "祖师":
-            device = 888
-        if device == "祖母":
-            device = 999
-        for i in data1:
-            models.TransferRecord.objects.create(name=i[2], re_openid=i[1], mch_billno=mch_billno,
-                                                 device=device, total_amount=i[0], status=status)
-            n += 1
-        print(str(device) + "推送提现数据" + str(number) + "条")
-        print("接收到" + str(device) + "提现数据" + str(n) + "条")
-        res = 0
-    except Exception as e:
-        print(e.__repr__())
-        res = 1
-    return HttpResponse(res)
 
 # 验证签名函数
 def weixin_mainbak(request):
@@ -140,6 +115,8 @@ def weixin_mainbak(request):
         # othercontent = autoreply(request)
         # return HttpResponse(othercontent)
 
+
+# 手动获取ACEsstoken
 def get_accesstoken(request):
     url  = 'https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=wx71ccb0df8485c76a&secret=c84fa46393b54cf7e09d10fe7b2179d4'
     responce = requests.GET(url=url).text
@@ -147,6 +124,7 @@ def get_accesstoken(request):
     print(json.loads(responce))
     return HttpResponse('nihao')
 
+# 微信官方主函数
 def weixin_main(request):
     str1 = """
     终于等到你！！！
@@ -164,7 +142,7 @@ def weixin_main(request):
     print('答题',event)
     print(open_id, wxg_id)
     print(type(open_id))
-    ACCESS_TOKEN = models.Token.objects.filter(id=1).values('token')[0]['token']
+    ACCESS_TOKEN = get_accesstoken()
     print('asdsadasd',ACCESS_TOKEN)
     if not event == 'subscribe':
         return HttpResponse('')
