@@ -17,14 +17,6 @@ from utils.weixinSDK import *
 list1 = ['TQUI51nP3YR5J8OZdMCSivqRI5igK15NGvdjUXsODSo', 'TQUI51nP3YR5J8OZdMCSil7bMwLskOLvFP9l4YQLHQ4', 'TQUI51nP3YR5J8OZdMCSijzTkEopkPy_c_uEHNMHR1c', 'TQUI51nP3YR5J8OZdMCSisZ2EA89vq39S7GOaPhj4XI', 'TQUI51nP3YR5J8OZdMCSiqve8pwMeQeMobHhyFro_yc', 'TQUI51nP3YR5J8OZdMCSitAfyaZGWG4NsN2P9ZnL5y4', 'TQUI51nP3YR5J8OZdMCSihKLumbIZZY85ywyDFhgocs', 'TQUI51nP3YR5J8OZdMCSinIrrKVygYMb8ppWP-cQSmQ', 'TQUI51nP3YR5J8OZdMCSil9A9FdaL_Svb8fo6pVa7ck', 'TQUI51nP3YR5J8OZdMCSit5UQtdF3E44lIOxkzk3tt8', 'TQUI51nP3YR5J8OZdMCSivnnQmlIIdjgGt-9XbBrNk0', 'TQUI51nP3YR5J8OZdMCSikJ-2vDdXdwde_RT-Bfpjxw']
 
 
-# while True:
-#     time_now = time.strftime("%S", time.localtime())  # 刷新
-#     if time_now == '55':  # 此处设置每天定时的时间
-#         # 此处3行替换为需要执行的动作
-#         print("hello")
-#         subject = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + " 定时发送测试"
-#         print(subject)
-#         time.sleep(2)  # 因为以秒定时，所以暂停2秒，使之不会在1秒内执行多次
 
 
 # 测试
@@ -45,27 +37,37 @@ def regester_user(request):
 
 
 
-# 获取所有的关注者openID 并存入数据库中
+# 获取所有的关注者openID 并更新存入数据库中
 def get_all_user(request):
-    res = get_user()
-    print(res)
-    openID_list = res['data']['openID_list']
-    now_time = get_now_tim()
-    for i in openID_list:
-        if not models.user_openID.objects.filter(openID=i).first():
-            # 不存在则创建
-            models.user_openID.objects.create(openID=i,create_time=now_time)
-            print('增加一条openiD')
+    # 初始化返回对象字典
+    rec = {'code': 0, 'msg':'','data':''}
+    try:
+        count_num = 0
+        res = get_user()
+        openID_list = res['data']['openID_list']
+        now_time = get_now_tim()
+        for i in openID_list:
+            if not models.user_openID.objects.filter(openID=i).first():
+                # 不存在则创建
+                count_num += 1
+                models.user_openID.objects.create(openID=i,create_time=now_time)
+                print('增加一条openiD')
+        # 开始将所有的openID 更新一遍
+        for p in openID_list:
+            res = get_info(p)
+            sub_time = time_date(res['subscribe_time'])
+            query_obj = models.user_openID.objects.filter(openID=p).update(user=res['nickname'],city=res['city'],
+                                                                           position=res['country'],headimgurl=res['headimgurl'],
+                                                                           subscribe=res['subscribe'],subscribe_time=sub_time,
+                                                                           remark=res['remark'])
 
-    # 开始将所有的openID 更新一遍
-    for p in openID_list:
-        res = get_info(p)
-        sub_time = time_date(res['subscribe_time'])
-        query_obj = models.user_openID.objects.filter(openID=p).update(user=res['nickname'],city=res['city'],
-                                                                       position=res['country'],headimgurl=res['headimgurl'],
-                                                                       subscribe=res['subscribe'],subscribe_time=sub_time,
-                                                                       remark=res['remark'])
-    return JsonResponse(res)
+        # 将新增条数计算出来
+        data = {'count_num':count_num}
+        rec['data'] = data
+    except Exception as e:
+        rec = {'code':1,'msg':e.__repr__()}
+
+    return JsonResponse(rec)
 
 #登陆校验（明文账号 -- 加密后的密码传输）
 def login(request):
