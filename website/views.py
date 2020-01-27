@@ -36,6 +36,19 @@ def regester_user(request):
     return HttpResponse('sad')
 
 
+# 获取所有用户的数据
+def get_data(request):
+    rec = {'code':0,'data':'','msg':''}
+    all_data = models.user_openID.objects.all()
+
+    data_str = models.model_to_dict(all_data)
+
+    print('这个是data')
+    print(data_str)
+
+
+
+
 
 # 获取所有的关注者openID 并更新存入数据库中
 def get_all_user(request):
