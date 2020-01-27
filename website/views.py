@@ -42,11 +42,7 @@ def get_data(request):
     rec = {'code':0,'data':'','msg':''}
     all_data = models.user_openID.objects.all()
 
-    data_str = model_to_dict(all_data)
-
-    print('这个是data')
-    print(data_str)
-
+    return JsonResponse(all_data)
 
 
 
