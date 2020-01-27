@@ -42,9 +42,9 @@ def get_data(request):
     rec = {'code':0,'data':'','msg':''}
     all_data = models.user_openID.objects.all()
 
-    for i in all_data:
-        print(i)
-        print(i.items())
+    for i in all_data[:1]:
+        for p in i:
+            print(i)
 
 
 
