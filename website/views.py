@@ -8,6 +8,7 @@ from .utils1 import create_mch_billno
 from website.datebase import *
 from rest_framework.views import APIView
 import json
+from django.forms.models import model_to_dict
 from django.db.models import Q
 import hashlib
 import requests
@@ -41,7 +42,7 @@ def get_data(request):
     rec = {'code':0,'data':'','msg':''}
     all_data = models.user_openID.objects.all()
 
-    data_str = models.model_to_dict(all_data)
+    data_str = model_to_dict(all_data)
 
     print('这个是data')
     print(data_str)
