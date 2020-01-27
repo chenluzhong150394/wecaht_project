@@ -43,8 +43,7 @@ def get_data(request):
     all_data = models.user_openID.objects.all()
 
     for i in all_data[:1]:
-        for p in i:
-            print(i)
+        print(i.__dir__())
 
 
 
