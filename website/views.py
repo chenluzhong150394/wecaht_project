@@ -42,8 +42,10 @@ def get_data(request):
     rec = {'code':0,'data':'','msg':''}
     all_data = models.user_openID.objects.all()
 
-    for i in all_data[:1]:
-        print(json.dumps(i))
+    res_list = list(all_data)
+
+    return JsonResponse(res_list,safe=False)
+        # print(json.dumps(i))
 
 
 
