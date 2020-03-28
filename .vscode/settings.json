@@ -1,3 +1,7 @@
 {
+    "python.linting.pylintArgs": [
+        "--load-plugins",
+        "pylint_django"
+    ],
     "python.pythonPath": "/Users/chen/.virtualenvs/dev/bin/python"
 }

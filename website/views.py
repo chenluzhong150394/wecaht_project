@@ -13,7 +13,8 @@ from django.db.models import Q
 import hashlib
 import requests
 from xml.etree import ElementTree
-from utils.weixinSDK import *
+# from ..utils.weixinSDK import *
+from test6.weixinSDK import *
 
 list1 = ['TQUI51nP3YR5J8OZdMCSivqRI5igK15NGvdjUXsODSo', 'TQUI51nP3YR5J8OZdMCSil7bMwLskOLvFP9l4YQLHQ4', 'TQUI51nP3YR5J8OZdMCSijzTkEopkPy_c_uEHNMHR1c', 'TQUI51nP3YR5J8OZdMCSisZ2EA89vq39S7GOaPhj4XI', 'TQUI51nP3YR5J8OZdMCSiqve8pwMeQeMobHhyFro_yc', 'TQUI51nP3YR5J8OZdMCSitAfyaZGWG4NsN2P9ZnL5y4', 'TQUI51nP3YR5J8OZdMCSihKLumbIZZY85ywyDFhgocs', 'TQUI51nP3YR5J8OZdMCSinIrrKVygYMb8ppWP-cQSmQ', 'TQUI51nP3YR5J8OZdMCSil9A9FdaL_Svb8fo6pVa7ck', 'TQUI51nP3YR5J8OZdMCSit5UQtdF3E44lIOxkzk3tt8', 'TQUI51nP3YR5J8OZdMCSivnnQmlIIdjgGt-9XbBrNk0', 'TQUI51nP3YR5J8OZdMCSikJ-2vDdXdwde_RT-Bfpjxw']
 
