@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import time
-from OA import settings
+from wechat import settings
 from django.core import cache
 from _md5 import md5
 from uuid import uuid4

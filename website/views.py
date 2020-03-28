@@ -3,7 +3,7 @@ from django.shortcuts import render, HttpResponse, redirect
 from django.http import FileResponse, JsonResponse
 # from django.views import View
 from website import models
-from OA import settings
+from wechat import settings
 from .utils1 import create_mch_billno
 from website.datebase import *
 from rest_framework.views import APIView
